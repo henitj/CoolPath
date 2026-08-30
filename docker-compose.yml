@@ -1,0 +1,51 @@
+name: coolpath
+
+services:
+  backend:
+    build: ./backend
+    ports:
+      - "8000:8000"
+    environment:
+      COOLPATH_LIVE_REFRESH_ON_STARTUP: "true"   # try Sentinel-2 / Landsat / Austin open data; snapshot fallback is automatic
+      COOLPATH_DATABASE_URL: sqlite:////srv/data/coolpath.db
+      REDIS_URL: redis://redis:6379/0
+      # For the PostGIS profile below use instead:
+      # COOLPATH_DATABASE_URL: postgresql+psycopg2://coolpath:coolpath@postgres:5432/coolpath
+    volumes:
+      - backend-data:/srv/data
+    depends_on:
+      redis:
+        condition: service_started
+    restart: unless-stopped
+
+  frontend:
+    build: ./frontend
+    ports:
+      - "8080:80"
+    depends_on:
+      - backend
+    restart: unless-stopped
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+    restart: unless-stopped
+
+  # Optional production database with spatial types.
+  #   docker compose --profile postgis up
+  postgres:
+    image: postgis/postgis:16-3.4
+    profiles: ["postgis"]
+    environment:
+      POSTGRES_USER: coolpath
+      POSTGRES_PASSWORD: coolpath
+      POSTGRES_DB: coolpath
+    ports:
+      - "5432:5432"
+    volumes:
+      - pg-data:/var/lib/postgresql/data
+
+volumes:
+  backend-data:
+  pg-data:

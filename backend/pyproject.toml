@@ -1,0 +1,18 @@
+[project]
+name = "coolpath-backend"
+version = "1.0.0"
+description = "CoolPath - urban micro-climate & walkability routing (Downtown Austin)"
+requires-python = ">=3.11"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"
+filterwarnings = ["ignore::DeprecationWarning"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I"]
+ignore = ["E501"]

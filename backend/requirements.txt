@@ -1,0 +1,12 @@
+fastapi>=0.115
+uvicorn[standard]>=0.30
+pydantic>=2.8
+pydantic-settings>=2.4
+SQLAlchemy>=2.0
+networkx>=3.3
+numpy>=1.26
+shapely>=2.1
+httpx>=0.27
+pysolar>=0.11
+redis>=5.0
+GeoPandas>=1.0
