@@ -1,0 +1,6 @@
+# Optional live-satellite ingestion extras (data hierarchy Priority 1).
+# CoolPath runs fully on the bundled snapshot without these; install them to
+# enable Copernicus Sentinel-2 / Landsat fetches via the Planetary Computer.
+rasterio>=1.3
+pystac-client>=0.8
+planetary-computer>=1.0

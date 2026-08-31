@@ -1,0 +1,49 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: #0b1220;
+  color: #e2e8f0;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+.maplibregl-ctrl-attrib {
+  background: rgba(11, 18, 32, 0.7) !important;
+  color: #94a3b8 !important;
+}
+.maplibregl-ctrl-attrib a {
+  color: #cbd5e1 !important;
+}
+
+.panel {
+  @apply rounded-xl border border-slate-700/60 bg-slate-900/80 shadow-panel backdrop-blur;
+}
+
+.chip {
+  @apply inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-medium;
+}
+
+.btn {
+  @apply rounded-lg px-3 py-2 text-sm font-semibold transition-colors;
+}
+
+.btn-primary {
+  @apply btn bg-cyan-500 text-slate-950 hover:bg-cyan-400 disabled:opacity-40;
+}
+
+input[type='range'] {
+  accent-color: #22d3ee;
+}
+
+.scroll-thin::-webkit-scrollbar {
+  width: 6px;
+}
+.scroll-thin::-webkit-scrollbar-thumb {
+  background: #334155;
+  border-radius: 3px;
+}
