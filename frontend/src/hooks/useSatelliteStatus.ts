@@ -2,7 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { SatelliteStatus } from '../types'
 
-/** Data-source status with manual live-refresh trigger. */
+/** Data-source status with a manual live-refresh trigger. */
 export function useSatelliteStatus() {
   const [status, setStatus] = useState<SatelliteStatus | null>(null)
   const [refreshing, setRefreshing] = useState(false)
@@ -22,8 +22,19 @@ export function useSatelliteStatus() {
   }, [refresh])
 
   useEffect(() => {
-    void refresh()
-  }, [refresh])
+    let active = true
+    void api
+      .satelliteStatus()
+      .then((data) => {
+        if (active) setStatus(data)
+      })
+      .catch(() => {
+        if (active) setStatus(null)
+      })
+    return () => {
+      active = false
+    }
+  }, [])
 
   return { status, refreshing, refresh, triggerRefresh }
 }

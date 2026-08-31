@@ -13,6 +13,7 @@ import { useRoute } from './hooks/useRoute'
 import { useShadows } from './hooks/useShadows'
 import { useSatelliteStatus } from './hooks/useSatelliteStatus'
 import { useGeolocation } from './hooks/useGeolocation'
+import { HAZARD_CATEGORIES } from './constants'
 import { austinTodayAt } from './utils/time'
 import type { FeatureCollection, ProfileId } from './types'
 
@@ -39,7 +40,6 @@ export default function App() {
   const [origin, setOrigin] = useState<[number, number] | null>([-97.747, 30.2653])
   const [destination, setDestination] = useState<[number, number] | null>([-97.7355, 30.2725])
   const [pickMode, setPickMode] = useState<PickMode>(null)
-  const [routeError, setRouteError] = useState<string | null>(null)
 
   const [layerToggles, setLayerToggles] = useState<LayerToggles>(DEFAULT_LAYERS)
   const [hour, setHour] = useState<number>(() => {
@@ -111,11 +111,7 @@ export default function App() {
 
   const go = useCallback(async () => {
     if (!origin || !destination) return
-    setRouteError(null)
-    const result = await routing.fetchRoute({ origin, destination, profile })
-    if (!result) {
-      // error surfaced via hook; fetchRoute already set it
-    }
+    await routing.fetchRoute({ origin, destination, profile })
   }, [origin, destination, profile, routing])
 
   // auto-route on profile change if we already have both points
@@ -217,7 +213,7 @@ export default function App() {
             routing.clear()
           }}
           loading={routing.loading}
-          error={routing.error ?? routeError}
+          error={routing.error}
           canRoute={Boolean(origin && destination)}
         />
         <MetricsPanel route={routing.route} />
@@ -261,7 +257,7 @@ export default function App() {
 
       <HazardDrawer
         open={drawerOpen}
-        categories={HAZARD_CATEGORIES_FALLBACK}
+        categories={HAZARD_CATEGORIES}
         pin={hazardPin}
         pickMode={pickMode === 'hazard'}
         onPickPin={() => setPickMode(pickMode === 'hazard' ? null : 'hazard')}
@@ -275,14 +271,3 @@ export default function App() {
     </div>
   )
 }
-
-// Static fallback list (kept in sync with the backend taxonomy).
-const HAZARD_CATEGORIES_FALLBACK = [
-  { id: 'broken_sidewalk', label: 'Broken Sidewalk', color: '#f97316', weight: 0.6 },
-  { id: 'extreme_sun', label: 'No Shade / Extreme Sun', color: '#facc15', weight: 0.5 },
-  { id: 'unlit_area', label: 'Unlit Area', color: '#a78bfa', weight: 0.55 },
-  { id: 'construction', label: 'Construction', color: '#60a5fa', weight: 0.7 },
-  { id: 'blocked_path', label: 'Blocked Path', color: '#f472b6', weight: 0.8 },
-  { id: 'flooding', label: 'Flooding / Standing Water', color: '#22d3ee', weight: 0.85 },
-  { id: 'other', label: 'Other', color: '#94a3b8', weight: 0.4 },
-]
