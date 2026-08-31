@@ -1,0 +1,26 @@
+{
+  "name": "coolpath",
+  "version": "1.0.0",
+  "private": true,
+  "description": "CoolPath - urban micro-climate & walkability routing for Downtown Austin",
+  "engines": {
+    "node": ">=20"
+  },
+  "workspaces": [
+    "frontend",
+    "mobile"
+  ],
+  "scripts": {
+    "dev": "npm run dev --workspace frontend",
+    "start": "npm run dev --workspace frontend",
+    "build": "npm run build --workspace frontend",
+    "preview": "npm run preview --workspace frontend",
+    "lint": "npm run lint --workspace frontend",
+    "test": "npm run test --workspace frontend && npm run test --workspace mobile",
+    "typecheck": "npm run typecheck --workspace frontend && npm run typecheck --workspace mobile",
+    "mobile": "npm run start --workspace mobile",
+    "mobile:web": "npm run web --workspace mobile",
+    "mobile:android": "npm run android --workspace mobile",
+    "mobile:ios": "npm run ios --workspace mobile"
+  }
+}

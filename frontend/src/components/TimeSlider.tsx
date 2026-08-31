@@ -1,14 +1,8 @@
-import { austinTodayAt } from '../utils/time'
-
 interface TimeSliderProps {
   hour: number
   onHour: (h: number) => void
   onNow: () => void
   isNow: boolean
-}
-
-const HOUR_LABELS: Record<number, string> = {
-  6: '6a', 9: '9a', 12: '12p', 15: '3p', 18: '6p', 21: '9p',
 }
 
 export default function TimeSlider({ hour, onHour, onNow, isNow }: TimeSliderProps) {
@@ -45,5 +39,3 @@ function formatHour(h: number): string {
   const h12 = hh % 12 === 0 ? 12 : hh % 12
   return mm ? `${h12}:${String(mm).padStart(2, '0')}${ampm}` : `${h12}${ampm}`
 }
-
-export { austinTodayAt, HOUR_LABELS }

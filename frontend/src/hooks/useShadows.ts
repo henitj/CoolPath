@@ -2,29 +2,28 @@ import { useEffect, useState } from 'react'
 import { api } from '../api/client'
 import type { ShadowResponse } from '../types'
 
-/** Fetch the building-shadow layer for a timestamp (debounced). */
+/** Fetch the building-shadow layer for a timestamp, debounced. */
 export function useShadows(timestamp: string | undefined, delayMs = 350) {
   const [shadows, setShadows] = useState<ShadowResponse | null>(null)
-  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
-    let cancelled = false
-    setLoading(true)
-    const t = setTimeout(async () => {
-      try {
-        const data = await api.shadows(timestamp)
-        if (!cancelled) setShadows(data)
-      } catch {
-        if (!cancelled) setShadows(null)
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
+    let active = true
+    const timer = setTimeout(() => {
+      void api
+        .shadows(timestamp)
+        .then((data) => {
+          if (active) setShadows(data)
+        })
+        .catch(() => {
+          if (active) setShadows(null)
+        })
     }, delayMs)
+
     return () => {
-      cancelled = true
-      clearTimeout(t)
+      active = false
+      clearTimeout(timer)
     }
   }, [timestamp, delayMs])
 
-  return { shadows, loading }
+  return { shadows }
 }

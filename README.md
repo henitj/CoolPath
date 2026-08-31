@@ -50,10 +50,23 @@ python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt -r requirements-dev.txt
 uvicorn app.main:app --reload --port 8000
 
-# frontend (Node 18+)
-cd frontend
-npm install
-npm run dev          # http://localhost:5173 (proxies /api → :8000)
+# frontend (Node 20+) - install everything from the repo root
+cd ..
+npm install           # installs frontend + mobile workspaces
+npm run dev           # http://localhost:5173 (proxies /api → :8000)
+```
+
+Run `npm install` once from the repository root; there is no need to `cd` into
+`frontend/` or `mobile/` first. The repo is an npm workspace, so the web app
+and mobile app scripts are all available from the one root `package.json`.
+
+```bash
+npm run dev             # web app
+npm run mobile:web      # Expo web app
+npm run build           # production web build
+npm run lint            # oxlint
+npm run typecheck       # all workspaces
+npm test                # all workspace tests
 ```
 
 The API works standalone (curl / Swagger UI at `/docs`) without the frontend.
@@ -68,10 +81,10 @@ cd backend
 pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 
-# 2) start Expo
-cd ../mobile
+# 2) start Expo from the repo root
+cd ..
 npm install
-npx expo start
+npm run mobile:web        # or npm run mobile:android / mobile:ios
 ```
 
 Scan the **QR code** printed in your terminal with the **Camera app (iOS)** or the
@@ -223,7 +236,8 @@ Full OpenAPI docs: `http://localhost:8000/docs`.
 ```bash
 cd backend && python -m pytest tests/ -q          # 59 tests: solar, shadows, weights,
                                                   # hazard decay, routing, all REST endpoints
-cd frontend && npx vitest run                     # formatting/compare/timezone utilities
+npm test                                          # from the repo root: frontend + mobile vitest
+npm run typecheck                                 # from the repo root: all workspaces
 ```
 
 Backend tests run fully offline against the snapshot (no network needed) with a throwaway SQLite
@@ -248,13 +262,13 @@ graph, 50 m hazard buffer falloff + 48 h half-life decay, and end-to-end route/h
 │   ├── requirements.txt    # core runtime
 │   ├── requirements-live.txt  # optional live-satellite extras (rasterio, pystac-client, …)
 │   └── Dockerfile
+├── package.json             # npm workspace: install frontend + mobile from the repo root
 ├── frontend/
 │   ├── src/
-│   │   ├── components/     # MapView, RoutingPanel, MetricsPanel, HazardDrawer, …
-│   │   ├── hooks/          # useGeolocation, useHazards, useRoute, useShadows, useSatelliteStatus
-│   │   ├── services/       # api client (src/api/client.ts)
-│   │   └── utils/          # formatting, comparison rows, Austin-time helpers (+ vitest tests)
-│   ├── package.json
+│   │   ├── api/             # api client (client.ts)
+│   │   ├── components/      # MapView, RoutingPanel, MetricsPanel, HazardDrawer, …
+│   │   ├── hooks/           # useGeolocation, useHazards, useRoute, useShadows, useSatelliteStatus
+│   │   └── utils/           # formatting, comparison rows, Austin-time helpers (+ vitest tests)
 │   ├── nginx.conf
 │   └── Dockerfile
 ├── mobile/                 # 📱 Expo mobile app (iOS/Android + web)
