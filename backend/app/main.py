@@ -12,7 +12,15 @@ from pathlib import Path
 from fastapi import APIRouter, FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from app.api import routes_hazards, routes_layers, routes_meta, routes_route, routes_satellite
+from app.api import (
+    routes_hazards,
+    routes_layers,
+    routes_meta,
+    routes_now,
+    routes_places,
+    routes_route,
+    routes_satellite,
+)
 from app.core.app_state import AppState
 from app.core.cache import Cache
 from app.core.config import Settings, get_settings
@@ -66,6 +74,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     api.include_router(routes_hazards.router)
     api.include_router(routes_layers.router)
     api.include_router(routes_satellite.router)
+    api.include_router(routes_now.router)
+    api.include_router(routes_places.router)
     app.include_router(api)
     return app
 

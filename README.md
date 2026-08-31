@@ -58,6 +58,50 @@ npm run dev          # http://localhost:5173 (proxies /api → :8000)
 
 The API works standalone (curl / Swagger UI at `/docs`) without the frontend.
 
+## 📱 Run it on your phone (Expo)
+
+The repo ships **CoolPath Mobile** — a native iOS/Android app built with Expo in `mobile/`.
+
+```bash
+# 1) start the backend (must be reachable from your phone → bind 0.0.0.0)
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# 2) start Expo
+cd ../mobile
+npm install
+npx expo start
+```
+
+Scan the **QR code** printed in your terminal with the **Camera app (iOS)** or the
+**Expo Go app (Android)** — that's it.
+
+* **Zero configuration networking:** when you scan the QR, the app reads Expo's
+  dev-server host and calls the API at `http://<your-computer's-LAN-IP>:8000`
+  automatically. (Android emulators use `10.0.2.2`; sandbox previews map the
+  `8000-` host automatically.)
+* If it can't connect, the app never crashes — it switches to a calm offline
+  mode, and **You → Connection** lets you set/test the server address manually
+  (persisted).
+* Android: allow the `http://` cleartext prompt if asked, and make sure phone
+  and computer are on the same Wi-Fi.
+* Unit tests: `npm test` in `mobile/` · Type check: `npm run typecheck`.
+
+### What the app does
+
+| Tab | What you get |
+|---|---|
+| 🌿 **Now** | Breathing comfort dial (0–100) for *your exact spot*, a living radar (shade sectors, real sun position, nearby hazards at their true bearings), today's sun arc, and calm coaching tips |
+| 🧭 **Route** | Pick any two of 14 curated places (or "use my location"), compare **path scores for all three routing profiles side-by-side** with a mini shade map and a recommendation |
+| 📍 **Places** | Every spot scored *right now*, sorted coolest-first; save favourites |
+| ✋ **Report** | 3-tap hazard reporting at your current location; reports re-score nearby routes instantly |
+| ⚙️ **You** | Connection doctor, °C/°F, gentle haptics, data provenance |
+
+The app logo is alive: it **breathes with live data, spins while routes are
+being scored, and celebrates when a report is planted.**
+
+
 ## 🏗️ Architecture
 
 ```
@@ -213,6 +257,14 @@ graph, 50 m hazard buffer falloff + 48 h half-life decay, and end-to-end route/h
 │   ├── package.json
 │   ├── nginx.conf
 │   └── Dockerfile
+├── mobile/                 # 📱 Expo mobile app (iOS/Android + web)
+│   ├── App.tsx
+│   ├── src/
+│   │   ├── screens/        # Home (now), Route, Places, Report, Settings
+│   │   ├── components/     # ScoreDial, NearbyRadar, SunArc, MiniRouteMap, …
+│   │   ├── hooks & state   # location, settings persistence, toasts, busy
+│   │   └── __tests__/      # vitest unit tests (24)
+│   └── app.json            # branding, splash, permissions
 ├── docker-compose.yml      # frontend + backend + redis (+ optional postgis profile)
 └── docs/ci-workflow.yml    # GitHub Actions CI (move to .github/workflows/ to enable)
 ```

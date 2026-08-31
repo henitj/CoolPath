@@ -1,0 +1,40 @@
+{
+  "expo": {
+    "name": "CoolPath",
+    "slug": "coolpath",
+    "version": "2.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0B3B36",
+    "splash": {
+      "image": "./assets/splash-icon.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0B3B36"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.coolpath.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "CoolPath uses your location to score the walking conditions around you and to find shade-aware routes nearby."
+      }
+    },
+    "android": {
+      "package": "com.coolpath.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundImage": "./assets/adaptive-icon.png"
+      },
+      "permissions": ["ACCESS_COARSE_LOCATION", "ACCESS_FINE_LOCATION"],
+      "predictiveBackGestureEnabled": false
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "extra": {
+      "eas": { "projectId": "" }
+    }
+  }
+}

@@ -23,3 +23,8 @@ dist/
 .vscode/
 .idea/
 .DS_Store
+
+# Expo
+.exo/
+.expo/
+mobile/dist/
