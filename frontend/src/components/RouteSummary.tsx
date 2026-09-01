@@ -50,9 +50,9 @@ export default function RouteSummary({ route, onClose }: RouteSummaryProps) {
       </div>
       <p className="route-benefit">{benefit}</p>
       <div className="route-detail-row">
-        <span>☂ {Math.round(metrics.shade_pct)}% shade</span>
-        <span>◌ {formatTemp(metrics.avg_temp_c, 'F')} surface</span>
-        {metrics.hazard_count > 0 ? <span className="hazard-detail">⚠ {metrics.hazard_count} near route</span> : <span className="clear-detail">✓ no reported hazards</span>}
+        <span>Shade: {Math.round(metrics.shade_pct)}%</span>
+        <span>Surface: {formatTemp(metrics.avg_temp_c, 'F')}</span>
+        {metrics.hazard_count > 0 ? <span className="hazard-detail">Caution: {metrics.hazard_count} near route</span> : <span className="clear-detail">No reported hazards</span>}
       </div>
       {route.properties.warnings && route.properties.warnings.length > 0 && (
         <p className="route-warning">{route.properties.warnings[0]}</p>

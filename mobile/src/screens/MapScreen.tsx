@@ -221,31 +221,49 @@ export default function MapScreen({ plan, onPlanChange, onStartNavigation, onOpe
       <SafeAreaView pointerEvents="box-none" style={styles.overlay}>
         <View pointerEvents="auto" style={styles.topStack}>
           <View style={styles.searchCard}>
-            <Pressable
-              style={styles.stopRow}
-              onPress={() => { setPinMode('origin'); setPicker('origin') }}
-              accessibilityRole="button"
-            >
-              <View style={styles.originDot} />
-              <View style={styles.stopCopy}>
-                <Text style={styles.stopLabel}>From</Text>
-                <Text style={styles.stopValue} numberOfLines={1}>{currentStart?.name ?? 'Set a start'}</Text>
+            <View style={styles.plannerHeader}>
+              <View style={styles.plannerIcon}>
+                <MaterialIcons name="directions-walk" size={18} color={C.mintDark} />
               </View>
-              <MaterialIcons name="chevron-right" size={22} color={C.inkFaint} />
-            </Pressable>
-            <View style={styles.connector} />
-            <Pressable
-              style={styles.stopRow}
-              onPress={() => { setPinMode('destination'); setPicker('destination') }}
-              accessibilityRole="button"
-            >
-              <MaterialIcons name="place" size={20} color={C.coral} />
-              <View style={styles.stopCopy}>
-                <Text style={styles.stopLabel}>To</Text>
-                <Text style={styles.stopValue} numberOfLines={1}>{destination?.name ?? 'Where to?'}</Text>
+              <View style={styles.plannerCopy}>
+                <Text style={styles.plannerTitle}>Plan your walk</Text>
+                <Text style={styles.plannerSubtitle}>Comfort-aware directions</Text>
               </View>
-              <MaterialIcons name="chevron-right" size={22} color={C.inkFaint} />
-            </Pressable>
+              <View style={styles.coverageBadge}>
+                <Text style={styles.coverageBadgeText}>Downtown</Text>
+              </View>
+            </View>
+            <View style={styles.stopsList}>
+              <Pressable
+                style={styles.stopRow}
+                onPress={() => { setPinMode('origin'); setPicker('origin') }}
+                accessibilityRole="button"
+                accessibilityLabel="Choose starting point"
+              >
+                <View style={styles.originDot} />
+                <View style={styles.stopCopy}>
+                  <Text style={styles.stopLabel}>From</Text>
+                  <Text style={styles.stopValue} numberOfLines={1}>{currentStart?.name ?? 'Set a start'}</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={22} color={C.inkFaint} />
+              </Pressable>
+              <View style={styles.connector} />
+              <Pressable
+                style={styles.stopRow}
+                onPress={() => { setPinMode('destination'); setPicker('destination') }}
+                accessibilityRole="button"
+                accessibilityLabel="Choose destination"
+              >
+                <View style={styles.destinationIcon}>
+                  <MaterialIcons name="place" size={17} color={C.coral} />
+                </View>
+                <View style={styles.stopCopy}>
+                  <Text style={styles.stopLabel}>To</Text>
+                  <Text style={styles.stopValue} numberOfLines={1}>{destination?.name ?? 'Where to?'}</Text>
+                </View>
+                <MaterialIcons name="chevron-right" size={22} color={C.inkFaint} />
+              </Pressable>
+            </View>
           </View>
 
           <View style={styles.statusRow}>
@@ -298,6 +316,8 @@ export default function MapScreen({ plan, onPlanChange, onStartNavigation, onOpe
                   onPress={() => { setProfile(id); onPlanChange(null); buzz() }}
                   style={[styles.profileChip, selected && styles.profileChipActive]}
                   accessibilityRole="button"
+                  accessibilityLabel={`Use ${item.title}`}
+                  accessibilityState={{ selected }}
                 >
                   <MaterialIcons name={item.icon} size={17} color={selected ? '#FFFFFF' : C.mintDeep} />
                   <View>
@@ -313,6 +333,7 @@ export default function MapScreen({ plan, onPlanChange, onStartNavigation, onOpe
             onPress={() => setAvoidRedPaths(!routingPreferences.avoidRedPaths)}
             style={[styles.avoidToggle, routingPreferences.avoidRedPaths && styles.avoidToggleOn]}
             accessibilityRole="switch"
+            accessibilityLabel="Avoid poor red paths"
             accessibilityState={{ checked: routingPreferences.avoidRedPaths }}
           >
             <MaterialIcons name="block" size={17} color={routingPreferences.avoidRedPaths ? C.coral : C.inkDim} />
@@ -380,50 +401,66 @@ const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: C.bg },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'space-between' },
   topStack: { paddingHorizontal: 14, paddingTop: 8, gap: 9 },
-  searchCard: { backgroundColor: C.surface, borderRadius: R.l, paddingHorizontal: 13, paddingVertical: 8, ...SHADOW.card },
-  stopRow: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 11 },
-  originDot: { width: 12, height: 12, borderRadius: 6, marginHorizontal: 4, backgroundColor: C.mintDeep, borderWidth: 2, borderColor: '#B7DFC4' },
-  connector: { height: 10, width: 1.5, backgroundColor: C.line, marginLeft: 9 },
+  searchCard: {
+    borderWidth: 1,
+    borderColor: 'rgba(213, 225, 215, 0.92)',
+    borderRadius: R.xl,
+    backgroundColor: 'rgba(255,255,255,0.98)',
+    padding: 10,
+    ...SHADOW.floating,
+  },
+  plannerHeader: { minHeight: 38, flexDirection: 'row', alignItems: 'center', gap: 9, paddingHorizontal: 4, paddingBottom: 8 },
+  plannerIcon: { width: 30, height: 30, borderRadius: 15, alignItems: 'center', justifyContent: 'center', backgroundColor: C.mintSoft },
+  plannerCopy: { flex: 1 },
+  plannerTitle: { color: C.ink, fontSize: 13.5, fontWeight: '800', letterSpacing: -0.1 },
+  plannerSubtitle: { color: C.inkFaint, fontSize: 10.5, fontWeight: '600', marginTop: 1 },
+  coverageBadge: { borderRadius: R.pill, backgroundColor: C.surfaceMuted, paddingHorizontal: 9, paddingVertical: 5 },
+  coverageBadgeText: { color: C.mintDark, fontSize: 9.5, fontWeight: '800', letterSpacing: 0.25 },
+  stopsList: { position: 'relative', borderRadius: R.l, backgroundColor: C.surfaceHi, borderWidth: 1, borderColor: C.lineSoft, overflow: 'hidden' },
+  stopRow: { minHeight: 52, flexDirection: 'row', alignItems: 'center', gap: 11, paddingHorizontal: 12 },
+  originDot: { width: 14, height: 14, borderRadius: 7, marginHorizontal: 3, backgroundColor: C.sky, borderWidth: 3, borderColor: C.skySoft },
+  destinationIcon: { width: 20, alignItems: 'center', marginHorizontal: 0 },
+  connector: { height: 1, backgroundColor: C.lineSoft, marginLeft: 45 },
   stopCopy: { flex: 1, minWidth: 0 },
-  stopLabel: { color: C.inkFaint, fontSize: 10.5, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
-  stopValue: { color: C.ink, fontSize: 15, fontWeight: '700', marginTop: 1 },
+  stopLabel: { color: C.inkFaint, fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.9 },
+  stopValue: { color: C.ink, fontSize: 15, fontWeight: '700', marginTop: 2 },
   statusRow: { flexDirection: 'row', gap: 8, alignItems: 'center' },
-  statusPill: { flex: 1, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.94)', borderRadius: R.pill, paddingHorizontal: 11, paddingVertical: 7, ...SHADOW.card },
+  statusPill: { flex: 1, alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.96)', borderRadius: R.pill, borderWidth: 1, borderColor: 'rgba(230,237,231,0.9)', paddingHorizontal: 12, paddingVertical: 8, ...SHADOW.card },
   statusText: { color: C.inkDim, fontSize: 11.5, fontWeight: '700', flexShrink: 1 },
-  myLocationButton: { width: 38, height: 38, borderRadius: 19, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', ...SHADOW.card },
+  myLocationButton: { width: 42, height: 42, borderRadius: 21, borderWidth: 1, borderColor: C.lineSoft, backgroundColor: C.surface, alignItems: 'center', justifyContent: 'center', ...SHADOW.card },
   floatingLeft: { position: 'absolute', left: 14, bottom: 278 },
-  hazardButton: { flexDirection: 'row', alignItems: 'center', gap: 6, borderRadius: R.pill, backgroundColor: C.coral, paddingHorizontal: 13, paddingVertical: 10, ...SHADOW.card },
+  hazardButton: { minHeight: 44, flexDirection: 'row', alignItems: 'center', gap: 7, borderRadius: R.pill, backgroundColor: C.coral, paddingHorizontal: 15, paddingVertical: 10, ...SHADOW.floating },
   hazardText: { color: '#FFFFFF', fontSize: 12.5, fontWeight: '800' },
   bottomArea: { paddingHorizontal: 14, paddingBottom: 12, gap: 8 },
-  layerLegend: { alignSelf: 'flex-start', borderRadius: R.m, backgroundColor: 'rgba(255,255,255,0.94)', padding: 9, gap: 6, ...SHADOW.card },
-  legendHeading: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  legendLabel: { color: C.inkDim, fontSize: 10.5, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.45 },
-  legendScale: { flexDirection: 'row', gap: 8 },
-  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  legendLine: { width: 13, height: 4, borderRadius: 2 },
+  layerLegend: { alignSelf: 'flex-start', borderRadius: R.m, borderWidth: 1, borderColor: 'rgba(230,237,231,0.9)', backgroundColor: 'rgba(255,255,255,0.96)', paddingHorizontal: 10, paddingVertical: 8, gap: 5, ...SHADOW.card },
+  legendHeading: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  legendLabel: { color: C.inkDim, fontSize: 10, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.55 },
+  legendScale: { flexDirection: 'row', gap: 9 },
+  legendItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  legendLine: { width: 14, height: 4, borderRadius: R.pill },
   legendText: { color: C.inkDim, fontSize: 9.5, fontWeight: '700' },
   profileRow: { gap: 8, paddingRight: 16 },
-  profileChip: { minWidth: 145, flexDirection: 'row', alignItems: 'center', gap: 7, paddingVertical: 8, paddingHorizontal: 10, borderWidth: 1, borderColor: C.lineSoft, borderRadius: R.m, backgroundColor: 'rgba(255,255,255,0.95)', ...SHADOW.card },
+  profileChip: { minWidth: 152, minHeight: 55, flexDirection: 'row', alignItems: 'center', gap: 8, paddingVertical: 9, paddingHorizontal: 11, borderWidth: 1, borderColor: C.lineSoft, borderRadius: R.l, backgroundColor: 'rgba(255,255,255,0.97)', ...SHADOW.card },
   profileChipActive: { backgroundColor: C.mintDeep, borderColor: C.mintDeep },
-  profileTitle: { color: C.ink, fontSize: 11.5, fontWeight: '800' },
-  profileDetail: { color: C.inkDim, fontSize: 9.5, marginTop: 1 },
+  profileTitle: { color: C.ink, fontSize: 12, fontWeight: '800' },
+  profileDetail: { color: C.inkDim, fontSize: 9.5, marginTop: 2, fontWeight: '600' },
   profileTextActive: { color: '#FFFFFF' },
-  avoidToggle: { alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: 'rgba(255,255,255,0.95)', borderWidth: 1, borderColor: C.lineSoft, paddingHorizontal: 11, paddingVertical: 7, borderRadius: R.pill, ...SHADOW.card },
-  avoidToggleOn: { backgroundColor: '#FFF4F1', borderColor: '#F1BBB6' },
+  avoidToggle: { alignSelf: 'flex-start', minHeight: 40, flexDirection: 'row', alignItems: 'center', gap: 7, backgroundColor: 'rgba(255,255,255,0.96)', borderWidth: 1, borderColor: C.lineSoft, paddingHorizontal: 11, paddingVertical: 7, borderRadius: R.pill, ...SHADOW.card },
+  avoidToggleOn: { backgroundColor: C.coralSoft, borderColor: C.coralLine },
   avoidText: { color: C.inkDim, fontSize: 11.5, fontWeight: '700' },
-  routeCard: { backgroundColor: C.surface, borderRadius: R.l, padding: 14, ...SHADOW.card },
+  routeCard: { borderWidth: 1, borderColor: C.lineSoft, backgroundColor: C.surface, borderRadius: R.xl, padding: 15, ...SHADOW.floating },
   routeTopline: { flexDirection: 'row', alignItems: 'flex-start', justifyContent: 'space-between' },
   etaBlock: { flex: 1 },
-  eta: { color: C.ink, fontSize: 26, lineHeight: 30, fontWeight: '800', letterSpacing: -0.6 },
-  routeMeta: { color: C.inkDim, fontSize: 12, marginTop: 1, fontWeight: '600' },
-  destinationText: { color: C.ink, fontSize: 13.5, fontWeight: '700', marginTop: 7 },
-  warningText: { color: C.amber, fontSize: 11.5, marginTop: 5, lineHeight: 16 },
-  planTitle: { color: C.ink, fontSize: 17, fontWeight: '800' },
-  planCopy: { color: C.inkDim, fontSize: 12.5, lineHeight: 18, marginTop: 3 },
-  errorText: { color: C.coral, fontSize: 12, lineHeight: 17, marginTop: 8, fontWeight: '600' },
-  routeButton: { marginTop: 11, borderRadius: R.m, minHeight: 48, backgroundColor: C.mintDeep, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
+  eta: { color: C.ink, fontSize: 29, lineHeight: 33, fontWeight: '800', letterSpacing: -0.8 },
+  routeMeta: { color: C.inkDim, fontSize: 12, marginTop: 2, fontWeight: '600' },
+  destinationText: { color: C.ink, fontSize: 13.5, fontWeight: '700', marginTop: 8 },
+  warningText: { color: C.amber, fontSize: 11.5, marginTop: 6, lineHeight: 16, fontWeight: '600' },
+  planTitle: { color: C.ink, fontSize: 18, fontWeight: '800', letterSpacing: -0.25 },
+  planCopy: { color: C.inkDim, fontSize: 12.5, lineHeight: 18, marginTop: 4 },
+  errorText: { color: C.coral, fontSize: 12, lineHeight: 17, marginTop: 9, fontWeight: '700' },
+  routeButton: { marginTop: 13, borderRadius: R.m, minHeight: 50, backgroundColor: C.mintDeep, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
   routeButtonText: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '800' },
-  startButton: { marginTop: 11, borderRadius: R.m, minHeight: 48, backgroundColor: C.mintDeep, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
+  startButton: { marginTop: 13, borderRadius: R.m, minHeight: 50, backgroundColor: C.mintDeep, flexDirection: 'row', gap: 8, alignItems: 'center', justifyContent: 'center' },
   startButtonText: { color: '#FFFFFF', fontSize: 14.5, fontWeight: '800' },
-  buttonDisabled: { opacity: 0.65 },
+  buttonDisabled: { opacity: 0.6 },
 })

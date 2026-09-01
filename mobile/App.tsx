@@ -14,7 +14,7 @@ import MapScreen, { type RoutePlan } from './src/screens/MapScreen'
 import NavigationScreen from './src/screens/NavigationScreen'
 import ProfileScreen from './src/screens/ProfileScreen'
 import ReportScreen from './src/screens/ReportScreen'
-import { C } from './src/theme'
+import { C, R, SHADOW } from './src/theme'
 
 type TabId = 'map' | 'navigate' | 'report' | 'profile'
 
@@ -62,7 +62,7 @@ function Shell() {
                 accessibilityState={{ selected: active }}
               >
                 <View style={[styles.tabIconWrap, active && styles.tabIconWrapActive]}>
-                  <MaterialIcons name={item.icon} size={21} color={active ? '#FFFFFF' : C.inkFaint} />
+                  <MaterialIcons name={item.icon} size={21} color={active ? C.mintDark : C.inkFaint} />
                 </View>
                 <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{item.label}</Text>
               </Pressable>
@@ -102,18 +102,19 @@ const styles = StyleSheet.create({
   body: { flex: 1, backgroundColor: C.bg },
   tabSafe: { backgroundColor: C.surface },
   tabBar: {
-    minHeight: 61,
+    minHeight: 68,
     flexDirection: 'row',
     alignItems: 'center',
     borderTopWidth: 1,
     borderTopColor: C.lineSoft,
     backgroundColor: C.surface,
-    paddingTop: 5,
-    paddingBottom: 5,
+    paddingTop: 7,
+    paddingBottom: 6,
+    ...SHADOW.card,
   },
-  tab: { flex: 1, alignItems: 'center', gap: 2, minHeight: 49, justifyContent: 'center' },
-  tabIconWrap: { width: 34, height: 27, alignItems: 'center', justifyContent: 'center', borderRadius: 14 },
-  tabIconWrapActive: { backgroundColor: C.mintDeep },
+  tab: { flex: 1, alignItems: 'center', gap: 3, minHeight: 53, justifyContent: 'center' },
+  tabIconWrap: { width: 42, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: R.pill },
+  tabIconWrapActive: { backgroundColor: C.mintSoft },
   tabLabel: { color: C.inkFaint, fontSize: 10.5, fontWeight: '700' },
-  tabLabelActive: { color: C.mintDeep },
+  tabLabelActive: { color: C.mintDark, fontWeight: '800' },
 })

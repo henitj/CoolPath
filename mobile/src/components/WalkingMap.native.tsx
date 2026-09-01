@@ -36,17 +36,17 @@ export interface MapStop {
 }
 
 export const GREEN_DAY_MAP_STYLE = [
-  { elementType: 'geometry', stylers: [{ color: '#F7FBF7' }] },
-  { elementType: 'labels.text.fill', stylers: [{ color: '#456458' }] },
-  { elementType: 'labels.text.stroke', stylers: [{ color: '#F7FBF7' }] },
-  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#D8E8DD' }] },
-  { featureType: 'landscape.natural', elementType: 'geometry.fill', stylers: [{ color: '#EAF5E9' }] },
-  { featureType: 'poi', elementType: 'geometry.fill', stylers: [{ color: '#E8F4E8' }] },
-  { featureType: 'poi.park', elementType: 'geometry.fill', stylers: [{ color: '#CDE8CB' }] },
+  { elementType: 'geometry', stylers: [{ color: '#F6F8F4' }] },
+  { elementType: 'labels.text.fill', stylers: [{ color: '#526258' }] },
+  { elementType: 'labels.text.stroke', stylers: [{ color: '#F6F8F4' }] },
+  { featureType: 'administrative', elementType: 'geometry.stroke', stylers: [{ color: '#D8E4DA' }] },
+  { featureType: 'landscape.natural', elementType: 'geometry.fill', stylers: [{ color: '#EAF3EA' }] },
+  { featureType: 'poi', elementType: 'geometry.fill', stylers: [{ color: '#E6F1E7' }] },
+  { featureType: 'poi.park', elementType: 'geometry.fill', stylers: [{ color: '#D5EBD7' }] },
   { featureType: 'road', elementType: 'geometry.fill', stylers: [{ color: '#FFFFFF' }] },
-  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#D9E8DE' }] },
-  { featureType: 'road.arterial', elementType: 'geometry.stroke', stylers: [{ color: '#C6DCCF' }] },
-  { featureType: 'water', elementType: 'geometry.fill', stylers: [{ color: '#CDE9E7' }] },
+  { featureType: 'road', elementType: 'geometry.stroke', stylers: [{ color: '#E0E8E1' }] },
+  { featureType: 'road.arterial', elementType: 'geometry.stroke', stylers: [{ color: '#CCDCCF' }] },
+  { featureType: 'water', elementType: 'geometry.fill', stylers: [{ color: '#DCEFFA' }] },
 ]
 
 export function asLatLng(lonLat: [number, number]): MapCoordinate {

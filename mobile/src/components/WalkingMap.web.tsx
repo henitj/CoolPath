@@ -1,7 +1,7 @@
 import React, { useEffect, useMemo } from 'react'
 import { Pressable, StyleSheet, Text, View } from 'react-native'
 import { MaterialIcons } from '@expo/vector-icons'
-import { C } from '../theme'
+import { C, R } from '../theme'
 import type { HazardFeature, RoadConditionFeature, RouteFeature } from '../types'
 
 export interface MapCoordinate {
@@ -115,14 +115,14 @@ export function MapAttributionShade() {
 }
 
 const styles = StyleSheet.create({
-  canvas: { ...StyleSheet.absoluteFillObject, overflow: 'hidden', backgroundColor: '#EAF5E9' },
-  greenLand: { ...StyleSheet.absoluteFillObject, backgroundColor: '#EAF5E9' },
-  road: { position: 'absolute', width: '135%', height: 13, left: '-18%', backgroundColor: '#FFFFFF', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#D8E9DC' },
-  conditionRoad: { position: 'absolute', width: '73%', height: 4, borderRadius: 4, opacity: 0.85 },
-  routeLine: { position: 'absolute', width: '120%', height: 8, borderRadius: 5, backgroundColor: C.mintDeep, top: '53%', left: '-10%', transform: [{ rotate: '-21deg' }] },
-  notice: { position: 'absolute', top: 138, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: 16, paddingHorizontal: 10, paddingVertical: 7, backgroundColor: 'rgba(255,255,255,0.94)' },
+  canvas: { ...StyleSheet.absoluteFillObject, overflow: 'hidden', backgroundColor: '#EAF3EA' },
+  greenLand: { ...StyleSheet.absoluteFillObject, backgroundColor: '#EAF3EA' },
+  road: { position: 'absolute', width: '135%', height: 13, left: '-18%', backgroundColor: '#FFFFFF', borderTopWidth: 1, borderBottomWidth: 1, borderColor: '#D8E4DA' },
+  conditionRoad: { position: 'absolute', width: '73%', height: 4, borderRadius: R.pill, opacity: 0.85 },
+  routeLine: { position: 'absolute', width: '120%', height: 8, borderRadius: R.pill, backgroundColor: C.mintDeep, top: '53%', left: '-10%', transform: [{ rotate: '-21deg' }] },
+  notice: { position: 'absolute', top: 152, alignSelf: 'center', flexDirection: 'row', alignItems: 'center', gap: 5, borderRadius: R.pill, borderWidth: 1, borderColor: C.lineSoft, paddingHorizontal: 11, paddingVertical: 8, backgroundColor: 'rgba(255,255,255,0.96)' },
   noticeText: { color: C.inkDim, fontSize: 11, fontWeight: '700' },
-  pin: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 3, maxWidth: 135, paddingHorizontal: 5, paddingVertical: 2, borderRadius: 12, backgroundColor: 'rgba(255,255,255,0.92)' },
+  pin: { position: 'absolute', flexDirection: 'row', alignItems: 'center', gap: 3, maxWidth: 135, paddingHorizontal: 7, paddingVertical: 4, borderRadius: R.m, backgroundColor: 'rgba(255,255,255,0.94)' },
   pinLeft: { top: '38%', left: '14%' },
   pinRight: { top: '58%', right: '12%' },
   pinText: { color: C.ink, fontSize: 10, fontWeight: '700', maxWidth: 90 },

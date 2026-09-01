@@ -3,88 +3,17 @@ import { ActivityIndicator, Pressable, SafeAreaView, ScrollView, StyleSheet, Tex
 import { MaterialIcons } from '@expo/vector-icons'
 import { api, friendlyError } from '../api'
 import WalkingMap, { asLatLng, type MapController } from '../components/WalkingMap'
-import { formatDistance, formatMinutes, haversineM } from '../format'
+import { formatDistance, formatMinutes } from '../format'
+import { currentStep, routeProgress } from '../navigation'
 import { useApp } from '../state'
 import { C, R, SHADOW } from '../theme'
-import type { RouteManeuver, RouteStep } from '../types'
+import type { RouteManeuver } from '../types'
 import type { RoutePlan } from './MapScreen'
 
 interface NavigationScreenProps {
   plan: RoutePlan | null
   onPlanChange: (plan: RoutePlan | null) => void
   onExitNavigation: () => void
-}
-
-interface RouteProgress {
-  nearestIndex: number
-  nearestDistanceM: number
-  remainingM: number
-  progress: number
-}
-
-function routeProgress(plan: RoutePlan, point: { lat: number; lon: number }): RouteProgress {
-  const line = plan.route.geometry.coordinates
-  if (line.length < 2) return { nearestIndex: 0, nearestDistanceM: 0, remainingM: 0, progress: 0 }
-
-  // Match against each *line segment*, not only route vertices. Downtown
-  // blocks can be 80–150 m long, so nearest-vertex matching makes a walker
-  // look off route halfway along a perfectly valid block.
-  let travelled = 0
-  let routeLength = 0
-  const segmentLengths = line.slice(1).map(([lon, lat], index) => {
-    const [priorLon, priorLat] = line[index]
-    const length = haversineM(priorLat, priorLon, lat, lon)
-    routeLength += length
-    return length
-  })
-  let nearestIndex = 0
-  let nearestDistanceM = Number.POSITIVE_INFINITY
-  let distanceAlongRoute = 0
-  const longitudeScale = 111_320 * Math.cos((point.lat * Math.PI) / 180)
-  const latitudeScale = 110_540
-
-  for (let index = 0; index < segmentLengths.length; index += 1) {
-    const [startLon, startLat] = line[index]
-    const [endLon, endLat] = line[index + 1]
-    const ax = (startLon - point.lon) * longitudeScale
-    const ay = (startLat - point.lat) * latitudeScale
-    const bx = (endLon - point.lon) * longitudeScale
-    const by = (endLat - point.lat) * latitudeScale
-    const dx = bx - ax
-    const dy = by - ay
-    const segmentSquared = dx * dx + dy * dy
-    const fraction = segmentSquared > 0 ? Math.max(0, Math.min(1, -(ax * dx + ay * dy) / segmentSquared)) : 0
-    const projectedX = ax + fraction * dx
-    const projectedY = ay + fraction * dy
-    const distance = Math.hypot(projectedX, projectedY)
-    if (distance < nearestDistanceM) {
-      nearestDistanceM = distance
-      // Keep the current street maneuver visible until the walker is very
-      // close to its next graph vertex, then advance to the next instruction.
-      nearestIndex = fraction >= 0.92 ? index + 1 : index
-      distanceAlongRoute = travelled + segmentLengths[index] * fraction
-    }
-    travelled += segmentLengths[index]
-  }
-
-  const remainingM = Math.max(0, routeLength - distanceAlongRoute)
-  const measuredTotal = Math.max(routeLength, 1)
-  return {
-    nearestIndex,
-    nearestDistanceM,
-    remainingM,
-    progress: Math.max(0, Math.min(1, 1 - remainingM / measuredTotal)),
-  }
-}
-
-function currentStep(steps: RouteStep[], coordinateIndex: number): { step: RouteStep; index: number } | null {
-  if (!steps.length) return null
-  let candidate = 0
-  for (let index = 0; index < steps.length; index += 1) {
-    if (steps[index].coordinate_index <= coordinateIndex) candidate = index
-    else break
-  }
-  return { step: steps[candidate], index: candidate }
 }
 
 function maneuverIcon(maneuver: RouteManeuver): keyof typeof MaterialIcons.glyphMap {
@@ -144,7 +73,7 @@ export default function NavigationScreen({ plan, onPlanChange, onExitNavigation 
     )
   }, [coords.heading, coords.lat, coords.lon, coords.ts, plan])
 
-  const progress = useMemo(() => (plan && coords.ts > 0 ? routeProgress(plan, coords) : null), [coords, plan])
+  const progress = useMemo(() => (plan && coords.ts > 0 ? routeProgress(plan.route.geometry.coordinates, coords) : null), [coords, plan])
   const steps = plan?.route.properties.steps ?? []
   const stepState = currentStep(steps, progress?.nearestIndex ?? 0)
   const nextStep = stepState?.step ?? null
@@ -292,46 +221,46 @@ export default function NavigationScreen({ plan, onPlanChange, onExitNavigation 
 const styles = StyleSheet.create({
   page: { flex: 1, backgroundColor: C.bg },
   overlay: { ...StyleSheet.absoluteFillObject, justifyContent: 'space-between' },
-  topCard: { marginTop: 8, marginHorizontal: 14, backgroundColor: C.surface, borderRadius: R.l, padding: 12, flexDirection: 'row', alignItems: 'center', gap: 11, ...SHADOW.card },
-  nextIcon: { width: 47, height: 47, borderRadius: 24, backgroundColor: C.mintDeep, alignItems: 'center', justifyContent: 'center' },
+  topCard: { marginTop: 8, marginHorizontal: 14, borderWidth: 1, borderColor: 'rgba(213,225,215,0.92)', backgroundColor: 'rgba(255,255,255,0.98)', borderRadius: R.xl, padding: 13, flexDirection: 'row', alignItems: 'center', gap: 11, ...SHADOW.floating },
+  nextIcon: { width: 50, height: 50, borderRadius: 25, backgroundColor: C.mintDeep, alignItems: 'center', justifyContent: 'center' },
   nextCopy: { flex: 1, minWidth: 0 },
-  nextEyebrow: { color: C.inkFaint, textTransform: 'uppercase', letterSpacing: 0.8, fontSize: 10.5, fontWeight: '800' },
-  nextInstruction: { color: C.ink, fontSize: 15.5, fontWeight: '800', lineHeight: 20, marginTop: 2 },
-  nextMeta: { color: C.inkDim, fontSize: 11.5, fontWeight: '600', marginTop: 2 },
-  recenter: { width: 39, height: 39, backgroundColor: '#E5F4E9', borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  bottomStack: { paddingHorizontal: 14, paddingBottom: 12, gap: 7 },
-  offRoute: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: '#FFF6ED', borderRadius: R.m, borderWidth: 1, borderColor: '#F1C695', padding: 10, ...SHADOW.card },
+  nextEyebrow: { color: C.inkFaint, textTransform: 'uppercase', letterSpacing: 0.9, fontSize: 10, fontWeight: '800' },
+  nextInstruction: { color: C.ink, fontSize: 15.5, fontWeight: '800', lineHeight: 20, marginTop: 3 },
+  nextMeta: { color: C.inkDim, fontSize: 11.5, fontWeight: '600', marginTop: 3 },
+  recenter: { width: 42, height: 42, backgroundColor: C.mintSoft, borderRadius: 21, alignItems: 'center', justifyContent: 'center' },
+  bottomStack: { paddingHorizontal: 14, paddingBottom: 12, gap: 8 },
+  offRoute: { flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: C.amberSoft, borderRadius: R.l, borderWidth: 1, borderColor: C.amberLine, padding: 11, ...SHADOW.card },
   offRouteTitle: { color: C.ink, fontSize: 12, fontWeight: '800' },
-  offRouteCopy: { color: C.inkDim, fontSize: 10.5, marginTop: 1 },
-  rerouteText: { color: C.coral, fontSize: 12, fontWeight: '800' },
-  routeError: { color: '#FFFFFF', backgroundColor: C.coral, borderRadius: R.m, padding: 9, fontSize: 12, fontWeight: '700' },
-  progressCard: { backgroundColor: C.surface, borderRadius: R.l, padding: 14, ...SHADOW.card },
+  offRouteCopy: { color: C.inkDim, fontSize: 10.5, marginTop: 2 },
+  rerouteText: { color: C.mintDark, fontSize: 12, fontWeight: '800' },
+  routeError: { color: '#FFFFFF', backgroundColor: C.coral, borderRadius: R.m, padding: 10, fontSize: 12, fontWeight: '700' },
+  progressCard: { borderWidth: 1, borderColor: C.lineSoft, backgroundColor: C.surface, borderRadius: R.xl, padding: 15, ...SHADOW.floating },
   progressTopline: { flexDirection: 'row', justifyContent: 'space-between', gap: 8 },
-  remainingEta: { color: C.ink, fontSize: 25, lineHeight: 29, fontWeight: '800', letterSpacing: -0.5 },
-  remainingMeta: { color: C.inkDim, fontSize: 12, fontWeight: '600', marginTop: 1 },
-  trackStatus: { maxWidth: '50%', alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 4, backgroundColor: '#E9F6EC', paddingHorizontal: 8, paddingVertical: 5, borderRadius: R.pill },
+  remainingEta: { color: C.ink, fontSize: 28, lineHeight: 32, fontWeight: '800', letterSpacing: -0.7 },
+  remainingMeta: { color: C.inkDim, fontSize: 12, fontWeight: '600', marginTop: 2 },
+  trackStatus: { maxWidth: '50%', alignSelf: 'flex-start', flexDirection: 'row', alignItems: 'center', gap: 5, backgroundColor: C.mintSofter, paddingHorizontal: 9, paddingVertical: 6, borderRadius: R.pill },
   trackStatusText: { color: C.inkDim, fontSize: 10.5, fontWeight: '700', flexShrink: 1 },
-  progressTrack: { height: 7, borderRadius: 4, backgroundColor: '#DBEADD', marginTop: 12, overflow: 'hidden' },
-  progressFill: { height: '100%', borderRadius: 4, backgroundColor: C.mint },
-  trackingRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 6 },
+  progressTrack: { height: 8, borderRadius: R.pill, backgroundColor: C.mintSoft, marginTop: 13, overflow: 'hidden' },
+  progressFill: { height: '100%', borderRadius: R.pill, backgroundColor: C.mint },
+  trackingRow: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 7 },
   trackingText: { color: C.inkFaint, fontSize: 10.5, fontWeight: '700' },
-  stepsToggle: { minHeight: 43, marginTop: 8, paddingHorizontal: 2, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: C.lineSoft },
-  stepsToggleTitle: { flexDirection: 'row', alignItems: 'center', gap: 7 },
+  stepsToggle: { minHeight: 48, marginTop: 9, paddingHorizontal: 2, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', borderTopWidth: 1, borderTopColor: C.lineSoft },
+  stepsToggleTitle: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   stepsToggleText: { color: C.ink, fontSize: 13.5, fontWeight: '800' },
-  stepsList: { maxHeight: 210, marginBottom: 5 },
-  stepRow: { flexDirection: 'row', gap: 9, paddingVertical: 8, paddingHorizontal: 6, borderRadius: R.s },
-  stepCurrent: { backgroundColor: '#E8F5EB' },
-  stepIcon: { width: 29, height: 29, borderRadius: 15, backgroundColor: '#E6F2E9', alignItems: 'center', justifyContent: 'center' },
+  stepsList: { maxHeight: 220, marginBottom: 6 },
+  stepRow: { flexDirection: 'row', gap: 10, paddingVertical: 9, paddingHorizontal: 7, borderRadius: R.m },
+  stepCurrent: { backgroundColor: C.mintSofter },
+  stepIcon: { width: 31, height: 31, borderRadius: 16, backgroundColor: C.mintSoft, alignItems: 'center', justifyContent: 'center' },
   stepIconCurrent: { backgroundColor: C.mintDeep },
   stepInstruction: { color: C.ink, fontSize: 12.5, lineHeight: 17, fontWeight: '700', paddingTop: 1 },
-  stepInstructionCurrent: { color: C.mintDeep },
+  stepInstructionCurrent: { color: C.mintDark },
   stepDistance: { color: C.inkFaint, fontSize: 10.5, marginTop: 2 },
-  endButton: { minHeight: 43, marginTop: 3, borderRadius: R.m, borderWidth: 1, borderColor: '#EFB8B3', backgroundColor: '#FFF7F6', flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center' },
+  endButton: { minHeight: 46, marginTop: 4, borderRadius: R.m, borderWidth: 1, borderColor: C.coralLine, backgroundColor: C.coralSoft, flexDirection: 'row', gap: 7, alignItems: 'center', justifyContent: 'center' },
   endButtonText: { color: C.coral, fontSize: 13.5, fontWeight: '800' },
   emptyPage: { flex: 1, alignItems: 'center', justifyContent: 'center', backgroundColor: C.bg, padding: 30, gap: 10 },
-  emptyIcon: { width: 72, height: 72, borderRadius: 36, alignItems: 'center', justifyContent: 'center', backgroundColor: '#DDF0E1' },
-  emptyTitle: { color: C.ink, fontSize: 21, fontWeight: '800', marginTop: 6 },
+  emptyIcon: { width: 76, height: 76, borderRadius: 38, alignItems: 'center', justifyContent: 'center', backgroundColor: C.mintSoft },
+  emptyTitle: { color: C.ink, fontSize: 22, fontWeight: '800', marginTop: 7, letterSpacing: -0.35 },
   emptyCopy: { color: C.inkDim, fontSize: 14, lineHeight: 21, textAlign: 'center', maxWidth: 310 },
-  emptyButton: { marginTop: 8, paddingHorizontal: 20, paddingVertical: 12, borderRadius: R.pill, backgroundColor: C.mintDeep },
+  emptyButton: { marginTop: 10, minHeight: 46, paddingHorizontal: 22, justifyContent: 'center', borderRadius: R.pill, backgroundColor: C.mintDeep },
   emptyButtonText: { color: '#FFFFFF', fontSize: 14, fontWeight: '800' },
 })

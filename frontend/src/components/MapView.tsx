@@ -59,7 +59,7 @@ const BASE_STYLE: StyleSpecification = {
     },
   },
   layers: [
-    { id: 'canvas', type: 'background', paint: { 'background-color': '#eef2ea' } },
+    { id: 'canvas', type: 'background', paint: { 'background-color': '#f6f8f4' } },
     { id: 'basemap', type: 'raster', source: 'basemap' },
   ],
 }

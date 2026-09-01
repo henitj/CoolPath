@@ -61,7 +61,7 @@ export default function Sheet({
           <View style={styles.headerRow}>
             <Text style={styles.title}>{title}</Text>
             <TouchableOpacity onPress={onClose} hitSlop={10}>
-              <Text style={styles.close}>✕</Text>
+              <Text style={styles.close}>×</Text>
             </TouchableOpacity>
           </View>
           {children}

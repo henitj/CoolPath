@@ -208,7 +208,7 @@ export default function RouteScreen({ initialTab }: { initialTab?: 'origin' | 'd
         <View style={styles.modalWrap}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setPickerFor(null)} hitSlop={10}>
-              <Text style={styles.modalClose}>✕</Text>
+              <Text style={styles.modalClose}>×</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Choose {pickerFor ?? ''}</Text>
             <View style={{ width: 24 }} />

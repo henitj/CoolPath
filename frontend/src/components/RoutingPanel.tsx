@@ -117,7 +117,7 @@ export default function RoutingPanel(props: RoutingPanelProps) {
           ⇅
         </button>
         <button className="btn border border-slate-700 bg-transparent text-slate-400 hover:text-slate-200" title="Clear" onClick={props.onClear}>
-          ✕
+          ×
         </button>
       </div>
 

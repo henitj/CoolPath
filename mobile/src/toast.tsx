@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useRef, useState } from 'react'
 import { Animated, StyleSheet, Text, View } from 'react-native'
-import { C, R } from './theme'
+import { C, R, SHADOW } from './theme'
 
 type ToastKind = 'info' | 'good' | 'warn'
 interface Toast {
@@ -17,7 +17,7 @@ export function useToast() {
 
 const COLORS: Record<ToastKind, string> = {
   info: C.sky,
-  good: '#A7F3A0',
+  good: C.mint,
   warn: C.amber,
 }
 
@@ -73,17 +73,13 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
-    backgroundColor: C.bgDeep,
+    backgroundColor: C.surface,
     borderRadius: R.pill,
     borderWidth: 1,
     borderColor: C.line,
     paddingHorizontal: 14,
     paddingVertical: 10,
-    shadowColor: '#000',
-    shadowOpacity: 0.4,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 8,
+    ...SHADOW.floating,
   },
   dot: { width: 8, height: 8, borderRadius: 4 },
   text: { color: C.ink, fontSize: 13, fontWeight: '600', flexShrink: 1 },

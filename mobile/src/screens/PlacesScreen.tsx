@@ -117,7 +117,7 @@ export default function PlacesScreen({ onPickDestination }: { onPickDestination:
         />
         {query.length > 0 && (
           <Pressable onPress={() => setQuery('')} hitSlop={8}>
-            <Text style={styles.clear}>✕</Text>
+            <Text style={styles.clear}>×</Text>
           </Pressable>
         )}
       </View>

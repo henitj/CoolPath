@@ -288,7 +288,7 @@ function mergePlaces(first: Place[], second: Place[]): Place[] {
 }
 
 function placeIcon(kind: string): string {
-  if (kind === 'park') return '♧'
+  if (kind === 'park') return 'P'
   if (kind === 'trail') return '⌁'
   if (kind === 'landmark' || kind === 'campus') return '⌂'
   if (kind === 'intersection') return '⌖'
