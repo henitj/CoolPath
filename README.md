@@ -10,6 +10,193 @@ seconds.
 
 Bounding box (EPSG:4326): `[-97.755, 30.260, -97.730, 30.278]` · Center: `30.2672, -97.7431`
 
+> **No API keys, no database setup, no sample-data download.** The backend ships a committed
+> offline snapshot of Downtown Austin, so a fresh clone runs the whole product locally. Live
+> satellite and open-data sources are used automatically when reachable, and fall back to the
+> snapshot when they are not.
+
+**Contents** · [Try it out](#try-it-out) · [Features](#features) · [Architecture](#architecture) ·
+[Routing model](#the-routing-model) · [API reference](#api-reference-excerpt) ·
+[Troubleshooting](#troubleshooting) · [Tests](#tests) · [Repo layout](#repository-layout) ·
+[Configuration](#configuration-env-vars-prefix-coolpath_)
+
+---
+
+## Try it out
+
+Pick whichever option matches your setup. Options A and B both give you the same web app; option C
+adds the native phone app.
+
+| Requirement | Version | Needed for |
+|---|---|---|
+| Python | **3.11+** | API (`backend/`) |
+| Node.js + npm | **Node 20+** (npm 10+) | web app, mobile app, workspace scripts |
+| Docker Engine 24+ with Compose v2 | – | option A only |
+| Expo Go (App Store / Play Store) | SDK 54 | option C only |
+| GPU / WebGL | any | MapLibre basemap rendering |
+
+### 0 — Clone
+
+```bash
+git clone https://github.com/henitj/CoolPath.git
+cd CoolPath
+
+cp .env.example backend/.env   # optional — every setting already has a working default
+```
+
+Nothing else is required: no keys, no migrations, no data download. Note that the `.env` file is
+loaded from the API's working directory, so it belongs in `backend/` (that is where `uvicorn` runs).
+
+### A — Docker (one command, everything wired up)
+
+```bash
+docker compose up --build
+```
+
+| URL | What it is |
+|---|---|
+| http://localhost:8080 | the map app (nginx serves the built frontend and proxies `/api` → backend) |
+| http://localhost:8000/docs | interactive Swagger UI for the routing API |
+| http://localhost:8000/redoc | ReDoc alternative |
+
+The first build pulls a Python 3.11 image (which installs the backend **plus** the optional
+`requirements-live.txt` satellite extras) and a Node 20 image that type-checks and bundles the
+frontend, so give it a few minutes; subsequent starts are near-instant. Stop with `Ctrl-C`, then
+`docker compose down` (add `-v` to also drop the SQLite hazard data). CI validates option B's
+commands directly rather than the images, so if an image build misbehaves, option B is the
+reliable path.
+
+Optional production database with spatial types:
+
+```bash
+docker compose --profile postgis up
+# then set COOLPATH_DATABASE_URL=postgresql+psycopg2://coolpath:coolpath@postgres:5432/coolpath
+# in docker-compose.yml's backend service
+```
+
+### B — Local development (two terminals)
+
+This is the path to use if you want to edit code, or if Docker is unavailable.
+
+```bash
+# ── Terminal 1: the API ──────────────────────────────────────────────
+cd backend
+python3 -m venv .venv
+source .venv/bin/activate                 # Windows PowerShell: .venv\Scripts\Activate.ps1
+pip install -r requirements.txt -r requirements-dev.txt
+uvicorn app.main:app --reload --port 8000
+# → "Uvicorn running on http://127.0.0.1:8000"
+# → "Startup live-data refresh finished: mode=snapshot" (or mode=live)
+
+# ── Terminal 2: the web app (from the repository root) ──────────────
+npm install                               # installs the frontend + mobile workspaces
+npm run dev
+# → "Local:   http://localhost:5173/"
+```
+
+Open **http://localhost:5173**. Vite listens on `5173` and proxies `/api` to the backend on `8000`,
+so no frontend configuration is required. Keep the API running in the first terminal — if it isn't,
+the app loads but every panel shows a fetch error.
+
+<details>
+<summary><b>Windows / PowerShell version of terminal 1</b></summary>
+
+```powershell
+cd backend
+py -3.11 -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements.txt -r requirements-dev.txt
+uvicorn app.main:app --reload --port 8000
+```
+
+If script activation is blocked: `Set-ExecutionPolicy -Scope Process RemoteSigned`.
+</details>
+
+**Sanity check the API from a third terminal:**
+
+```bash
+curl -s localhost:8000/api/v1/health          # {"status":"ok","time":"…"}
+curl -s localhost:8000/api/v1/meta | head -c 200
+open http://localhost:8000/docs               # Windows: start, Linux: xdg-open
+```
+
+### C — On your phone with Expo Go
+
+`mobile/` is a native iOS/Android walking app pinned at **Expo SDK 54 / React Native 0.81** — the
+SDK supported by the stock Expo Go client, so **no custom development build is needed**. It uses
+`react-native-maps`, Expo Location, Expo Haptics, AsyncStorage, `react-native-svg` and Expo vector
+icons only.
+
+```bash
+# Terminal 1 — the API must bind to 0.0.0.0 so the phone can reach it
+cd backend && source .venv/bin/activate
+uvicorn app.main:app --host 0.0.0.0 --port 8000
+
+# Terminal 2 — from the repository root
+npm install
+npm run mobile          # prints a QR code in LAN mode
+```
+
+Open **Expo Go** and scan the QR code. The phone and the computer must be on the **same Wi-Fi
+network**, and the computer's firewall must allow inbound TCP `8000`.
+
+Other mobile entry points:
+
+| Command | Does |
+|---|---|
+| `npm run mobile` | Expo Go, LAN mode (default) |
+| `npm run mobile:web` | the same app in a browser via Metro (Expo's default web port, `8081`) |
+| `npm run mobile:android` / `mobile:ios` | launch a locally installed emulator/simulator |
+| `npm run mobile:tunnel` | Metro over a tunnel (JS only — the API is *not* tunneled) |
+| `npm run mobile:doctor` | `expo-doctor` version validation (fetches the package on demand) |
+
+Phone ↔ API behaviour:
+
+- Expo's LAN manifest supplies the computer address, so the app automatically calls
+  `http://<computer-LAN-IP>:8000`.
+- **Profile → Server connection** shows the active address, tests it, and accepts a manual URL when
+  LAN discovery is blocked.
+- For `npm run mobile:tunnel`, configure a reachable HTTPS API with `EXPO_PUBLIC_API_URL` before
+  starting, or paste that address in Profile.
+- The app requests foreground location only. It continuously calibrates while open and is explicit
+  that the bundled pedestrian data covers **Downtown Austin only**.
+
+### What to try once it is running
+
+1. **Search a destination.** The panel resolves 16 curated landmarks plus every mapped
+   intersection — try `Congress & 6th`, `State Capitol`, `City Hall`, `Trinity bridge` — or paste
+   coordinates (`30.2672,-97.7431`). Pin the map, or use the GPS button, for your start point.
+   (On an open network, unmatched queries fall through to Nominatim.)
+2. **Switch profiles.** Run the same trip as *Fastest*, *Cool & Shaded* and *Safe & Accessible* and
+   read the comparison rows — every response is scored against the fastest baseline, so distance,
+   temperature, shade, comfort and effort deltas appear side by side. Measured example: **Republic
+   Square → Waterloo Park**, `cool` profile, 7:30 p.m. on 30 Aug — the shaded route costs the **same
+   distance** (2 061 m, 25.6 min), adds **+13.8 points of shade**, drops the average surface
+   temperature by **0.8 °C**, lifts comfort by **+8.6**, and adds **7.5 min** of effort-weighted
+   time. The map itself always shows *right now*; pass `timestamp` to the API to replay any hour.
+3. **Toggle the overlay layers.** The `Layers` button (top-right of the map) switches *Road
+   conditions*, *Heat zones*, *Tree canopy*, *Building shade*, *Buildings* and *Reported hazards*.
+   Shadows are drawn for the current instant, so re-run step 2 at different times of day.
+4. **Report a hazard** from the bottom-left button. The report penalises a 50 m buffer immediately —
+   nearby roads redden and routes around them re-score within the same second, then decay with a
+   48 h half-life.
+5. **Break out of the browser.** `GET /api/v1/route` works standalone (see
+   [API reference](#api-reference-excerpt)) — useful for scripts and for validating the model
+   without the map.
+
+### One-off housekeeping commands
+
+```bash
+npm run build           # type-check + production bundle → frontend/dist
+npm run preview         # serve that bundle on :4173
+npm run lint            # oxlint (frontend workspace)
+npm run typecheck       # tsc across all workspaces
+npm test                # frontend + mobile vitest suites
+
+cd backend && .venv/bin/python -m pytest tests/ -q      # 72 offline API tests
+.venv/bin/python scripts/build_snapshot.py --seed 42    # regenerate the offline snapshot
+```
+
 ---
 
 ## Features
@@ -18,99 +205,11 @@ Bounding box (EPSG:4326): `[-97.755, 30.260, -97.730, 30.278]` · Center: `30.26
 |---|---|
 | **Satellite ingestion** | Sentinel-2 L2A (B04/B08 → NDVI) + Landsat 8/9 C2 L2 (surface temperature) via the Planetary Computer STAC API |
 | **Austin open data** | City of Austin tree canopy (Socrata `uj6p-2j9z`), UHI disparity layer, sidewalk network — with graceful hydration fallback |
-| **Dynamic shadows** | pysolar/NOAA solar azimuth + elevation → building-height shadow polygons cached per minute; slider scrubbs the sun from 5 a.m. to 9 p.m. |
+| **Dynamic shadows** | pysolar/NOAA solar azimuth + elevation → building-height shadow polygons cached per minute; any instant reachable via the API `timestamp` parameter |
 | **Micro-climate weighting** | `W = dist · (1 + α·HeatIndex − β·CanopyNDVI + γ·HazardPenalty + Accessibility)` per edge, per profile |
 | **Crowdsourced hazards** | `POST/GET/DELETE /api/v1/hazards` — reports penalise a 50 m buffer instantly, then decay exponentially (48 h half-life, 7-day expiry) |
 | **3 routing profiles** | Fastest (A*) · Cool & Shaded · Safe & Accessible — every response carries a fastest-path baseline + metric deltas |
 | **Map-first directions UI** | Google Maps-style MapLibre screen: type/search a start and destination (or use device GPS / map pins), get an automatic route, see live green→red road conditions, and report hazards from the bottom-left button |
-
-## Quickstart
-
-### Docker (recommended)
-
-```bash
-docker compose up --build
-# web app  → http://localhost:8080
-# API docs → http://localhost:8000/docs
-```
-
-Optional production database (PostGIS):
-
-```bash
-docker compose --profile postgis up
-# then set COOLPATH_DATABASE_URL=postgresql+psycopg2://coolpath:coolpath@postgres:5432/coolpath
-```
-
-### Local development
-
-```bash
-# backend (Python 3.11+)
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt -r requirements-dev.txt
-uvicorn app.main:app --reload --port 8000
-
-# frontend (Node 20+) - install everything from the repo root
-cd ..
-npm install           # installs frontend + mobile workspaces
-npm run dev           # http://localhost:5173 (proxies /api → :8000)
-```
-
-Run `npm install` once from the repository root; there is no need to `cd` into
-`frontend/` or `mobile/` first. The repo is an npm workspace, so the web app
-and mobile app scripts are all available from the one root `package.json`.
-
-```bash
-npm run dev             # web app
-npm run mobile:web      # Expo web app
-npm run build           # production web build
-npm run lint            # oxlint
-npm run typecheck       # all workspaces
-npm test                # all workspace tests
-```
-
-The API works standalone (curl / Swagger UI at `/docs`) without the frontend.
-
-## Run it on your phone with Expo Go
-
-CoolPath Mobile is a native iOS/Android walking app in `mobile/`. It is pinned
-at **Expo SDK 54 / React Native 0.81**, the SDK supported by the standard Expo
-Go app for this project. It uses `react-native-maps`, Expo Location, AsyncStorage,
-and Expo vector icons only — no custom development build is needed.
-
-```bash
-# Terminal 1 — the API must be reachable by your phone
-cd backend
-python -m venv .venv && source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-# Terminal 2 — from the repository root
-cd ..
-npm install
-npm run mobile
-```
-
-Open **Expo Go** on the phone and scan the QR code from the second terminal.
-Use the same Wi-Fi network for the phone and development computer. `npm run
-mobile` explicitly starts the stock Expo Go client in LAN mode. Its tiny
-cross-platform launcher skips only Expo's optional *online* dependency check,
-so restricted networks cannot prevent Metro from showing a QR; the checked-in
-SDK 54 lockfiles and `npm run mobile:doctor` perform version validation.
-
-Phone/API connection behavior:
-
-- Expo's LAN manifest supplies the computer address, so the app automatically
-  calls `http://<computer-LAN-IP>:8000`. The API must bind to `0.0.0.0`, and a
-  local firewall must allow TCP port 8000.
-- **Profile → Server connection** shows the active address, checks it, and
-  accepts a manual URL if your network blocks LAN discovery.
-- A Metro tunnel delivers JavaScript but does not tunnel the separate Python
-  API. For `npm run mobile:tunnel`, configure a reachable HTTPS API with
-  `EXPO_PUBLIC_API_URL` before starting, or paste that address in Profile.
-- The app requests foreground location only. It continuously calibrates while
-  the app is open and is explicit that bundled pedestrian data covers **Downtown
-  Austin only**; it does not claim citywide walking coverage.
 
 ### Mobile experience
 
@@ -121,21 +220,21 @@ Phone/API connection behavior:
 | **Report** | GPS-gated, downtown-only condition reports that immediately affect nearby route costs. |
 | **Profile** | Persisted cool/care/direct route preference, an avoid-poor-red-paths switch, GPS accuracy and coverage feedback, server connection controls, and saved walk history. |
 
-The default **Cool route** optimizes the lowest walking opportunity cost by
-balancing shade and distance. Enabling **Avoid poor red paths** first searches
-for a route with every red-condition segment excluded; a red segment is used
-only when the mapped pedestrian graph has no clean connection.
-
+The default **Cool route** optimizes the lowest walking opportunity cost by balancing shade and
+distance. Enabling **Avoid poor red paths** first searches for a route with every red-condition
+segment excluded; a red segment is used only when the mapped pedestrian graph has no clean
+connection.
 
 ## Architecture
 
 ```
 ┌─────────────────────────────  Frontend (React + TS + Vite + Tailwind)  ─────────────────────────┐
-│  MapView (MapLibre GL)   RoutingPanel   MetricsPanel   HazardDrawer   TimeSlider  StatusBar     │
+│  MapView (MapLibre GL)  ·  DirectionsPanel  ·  RouteSummary  ·  HazardDrawer  ·  inline layers  │
+│                                    + legend, map tools (App.tsx)                                │
 └──────────────────────────────────────────┬──────────────────────────────────────────────────────┘
                                            │ /api/v1  (JSON / GeoJSON)
 ┌──────────────────────────────────────────▼──────────────────────────────────────────────────────┐
-│  FastAPI  ·  api/  route · hazards · layers · satellite · meta                                  │
+│  FastAPI  ·  api/  route · hazards · layers · satellite · places · now · meta                   │
 │────────────────────────────  services/  ────────────────────────────────────────────────────────│
 │  satellite_service ─┐   Sentinel-2 NDVI + Landsat LST (Planetary Computer, lazy imports)       │
 │  austin_service   ──┤   Socrata tree canopy (uj6p-2j9z) + ArcGIS UHI disparity                  │
@@ -160,10 +259,12 @@ only when the mapped pedestrian graph has no clean connection.
 | 2 | **OpenStreetMap Overpass** | pedestrian graph, building heights | → snapshot graph |
 | 3 | **Bundled snapshot** (`backend/app/data/snapshot/`) | everything | always available |
 
-The active branch is reported per-layer by `GET /api/v1/satellite/status` and surfaced as chips in
-the UI (`Refresh live data` re-runs the hierarchy on demand — a daemon thread also runs it on
-startup). In this sandboxed environment outbound geo APIs are firewalled, so the app demonstrably
-runs fully on the snapshot layer; on an open network the live sources take over automatically.
+The active branch is reported per-layer by `GET /api/v1/satellite/status`, and `POST
+/api/v1/satellite/refresh` re-runs the hierarchy on demand (a daemon thread also runs it on
+startup). In restricted environments (CI, sandboxes, firewalled networks) outbound geo APIs are
+unreachable, so the app demonstrably runs fully on the snapshot layer; on an open network the live
+sources take over automatically. Set `COOLPATH_OFFLINE_MODE=true` to skip the attempts entirely and
+make startup instant and deterministic.
 
 > **Snapshot provenance** — the offline bundle is a *deterministic approximation* of downtown
 > Austin's urban fabric (named street grid, landmark towers with real heights, parks, Lady Bird
@@ -217,6 +318,9 @@ curl -s localhost:8000/api/v1/hazards -H 'content-type: application/json' -d '{
 # Hazards in a bounding box
 curl -s "localhost:8000/api/v1/hazards?bbox=-97.755,30.260,-97.730,30.278"
 
+# Micro-climate at a single point (temperature, shade %, comfort — the mobile "near me" card)
+curl -s "localhost:8000/api/v1/now?lat=30.2672&lon=-97.7431"
+
 # Building shadows at a specific instant (solar alt/az included)
 curl -s "localhost:8000/api/v1/layers/shadows?timestamp=2026-08-30T14:00:00-05:00"
 
@@ -242,79 +346,139 @@ Full OpenAPI docs: `http://localhost:8000/docs`.
 | `GET` | `/api/v1/route/profiles` | Profile parameter sets |
 | `POST/GET` | `/api/v1/hazards` | Report / query hazards (bbox, category, active) |
 | `GET/DELETE` | `/api/v1/hazards/{id}` | Fetch / remove a report |
-| `GET` | `/api/v1/hazards/categories` | Hazard taxonomy |
+| `GET` | `/api/v1/hazards/categories` | Hazard taxonomy (weights, colours) |
 | `GET` | `/api/v1/layers/{buildings,canopy,water,parks,heat}` | Map layers (GeoJSON) |
 | `GET` | `/api/v1/layers/road-conditions?timestamp=` | Live 0–100 per-road comfort/safety overlay (green → red) |
 | `GET` | `/api/v1/layers/shadows?timestamp=` | Shadow polygons + solar position |
-| `GET` | `/api/v1/places/search?q=` | Offline place, street-intersection, and coordinate search |
 | `GET` | `/api/v1/layers/network/stats` | Graph stats |
-| `GET/POST` | `/api/v1/satellite/status|refresh` | Ingestion hierarchy status / manual refresh |
-| `GET` | `/api/v1/meta`, `/api/v1/health` | Metadata, health |
+| `GET` | `/api/v1/now?lat=&lon=&timestamp=` | Point conditions: `temp_c`, `ndvi`, shade/canopy %, comfort, sun |
+| `GET` | `/api/v1/places` · `/api/v1/places/search?q=` | Curated destinations · place/intersection/coordinate search |
+| `GET/POST` | `/api/v1/satellite/status` · `/refresh` | Ingestion hierarchy status / manual refresh |
+| `GET` | `/api/v1/meta` · `/api/v1/health` | Metadata, health |
+
+Every GeoJSON route response carries the sampled per-vertex exposure series plus the
+`comparison` block; `timestamp` is accepted anywhere shadows matter and defaults to *now* in
+`America/Chicago`.
+
+## Troubleshooting
+
+| Symptom | Cause & fix |
+|---|---|
+| `ModuleNotFoundError: app` | Run uvicorn **from `backend/`** — `uvicorn app.main:app` resolves the package relative to the cwd. |
+| `Address already in use: 8000` / `5173` | Something owns the port: `lsof -i :8000` (Windows: `netstat -ano \| findstr :8000`), or move it — `uvicorn app.main:app --port 8001` **and** the proxy target in `frontend/vite.config.ts` must change together. |
+| App loads, panels say "fetch failed" / 502 | The API isn't running, or is on a different port than the Vite proxy target. Check `curl -s localhost:8000/api/v1/health`. |
+| Startup log shows `→ snapshot fallback` | Expected on restricted networks: live Sentinel/Landsat/Austin/Overpass endpoints are unreachable and the deterministic snapshot takes over. The app is fully functional; `curl -X POST localhost:8000/api/v1/satellite/refresh` retries the hierarchy. |
+| Slow start / long timeout on boot | `COOLPATH_OFFLINE_MODE=true` skips every outbound fetch. |
+| `pip install` fails on `geopandas`/`shapely` | Both need a recent pip and wheels for your platform: `python -m pip install -U pip wheel` first, or use Python 3.11/3.12 on a 64-bit OS. |
+| `npm install` errors about workspaces | Install from the **repository root** (never `cd frontend && npm install`); the root `package.json` declares `frontend` and `mobile` as workspaces. Node must be ≥ 20: `node -v`. |
+| Vite "blocked request / host not allowed" | `allowedHosts: true` is already set in `vite.config.ts`; if you override the config, keep it when serving from a tunnel or a LAN hostname. |
+| Phone can't reach the API | The API must bind to `0.0.0.0`, not `127.0.0.1`; same Wi-Fi network; allow inbound TCP 8000 in the OS firewall. Corporate/VPN networks often block LAN peers — paste the URL under **Profile → Server connection**, or run the API somewhere public and set `EXPO_PUBLIC_API_URL`. |
+| `npm run mobile` shows no QR code | It skips Expo's optional *online* dependency check, but a stale `node_modules` still breaks Metro: rerun `npm install` at the root after any `package.json` change. |
+| `npm run mobile:doctor` wants to install a package | `expo-doctor` is not vendored in `mobile/devDependencies`, so `npx` fetches it on demand (needs network). |
+| Hazards disappear | They expire by design: 48 h half-life, deleted at `COOLPATH_HAZARD_MAX_AGE_H` (168 h). Clear the DB entirely with `rm backend/data/coolpath.db`. |
+| Map tiles don't move / blank canvas | WebGL disabled (some VMs, remote desktops) or a content blocker on the basemap host. The routing panels and API still work. |
 
 ## Tests
 
 ```bash
-cd backend && python -m pytest tests/ -q          # solar, shadows, weights, road conditions,
-                                                  # hazard decay, routing, and all REST endpoints
-npm test                                          # from the repo root: frontend + mobile vitest
-npm run typecheck                                 # from the repo root: all workspaces
+# backend — 72 tests, fully offline against the snapshot, throwaway SQLite DB
+cd backend && source .venv/bin/activate && python -m pytest tests/ -q
+
+# from the repository root
+npm test                # frontend (9 vitest tests) + mobile (28 vitest tests)
+npm run typecheck       # tsc across all workspaces
+npm run lint            # oxlint (frontend workspace; config in frontend/.oxlintrc.json)
 ```
 
-Backend tests run fully offline against the snapshot (no network needed) with a throwaway SQLite
-DB. Highlights: solar position validated against pysolar/NOAA reference values (≤0.8°), shadow
-length ∝ `1/tan(elevation)`, cool-vs-fastest profile divergence on a geo-consistent two-corridor
-graph, 50 m hazard buffer falloff + 48 h half-life decay, and end-to-end route/hazard flows.
+Highlights: solar position validated against pysolar/NOAA reference values (≤0.8°), shadow length
+∝ `1/tan(elevation)`, cool-vs-fastest profile divergence on a geo-consistent two-corridor graph,
+50 m hazard buffer falloff + 48 h half-life decay, point-condition and search endpoints, and
+end-to-end route/hazard flows. `python -m pytest tests/ -v` lists them individually.
+
+CI is defined in [`docs/ci-workflow.yml`](docs/ci-workflow.yml): the backend job regenerates the
+snapshot (determinism check) and runs pytest offline, the frontend job runs `npm ci`, lint,
+typecheck, production build and both vitest suites. It sits in `docs/` rather than
+`.github/workflows/` only because a repo admin has to perform that move (automation tokens here
+lack the `workflows` permission) — drop the file in as `.github/workflows/ci.yml` to switch it on.
 
 ## Repository layout
 
 ```
 ├── backend/
 │   ├── app/
-│   │   ├── api/            # FastAPI routers (route, hazards, layers, satellite, meta)
-│   │   ├── core/           # config (pydantic-settings), db, cache, app_state
+│   │   ├── api/            # FastAPI routers: route, hazards, layers, satellite, places, now, meta
+│   │   ├── core/           # config (pydantic-settings), db, cache, app_state, geo_utils, constants
 │   │   ├── models/         # SQLAlchemy ORM + pydantic schemas
-│   │   ├── services/       # satellite, austin open data, osm, solar, shadows,
+│   │   ├── services/       # satellite, austin open data, osm, solar, shadows, conditions,
 │   │   │                   # environment rasters, canopy index, hazards, routing engine
-│   │   ├── data/snapshot/  # offline Downtown Austin bundle (generated, versioned)
-│   │   └── main.py
-│   ├── scripts/build_snapshot.py
+│   │   ├── data/snapshot/  # offline Downtown Austin bundle (generated, versioned, committed)
+│   │   └── main.py         # create_app(); `uvicorn app.main:app`
+│   ├── scripts/build_snapshot.py   # deterministic generator (--seed 42)
 │   ├── tests/              # pytest suite (offline, deterministic)
-│   ├── requirements.txt    # core runtime
+│   ├── requirements.txt    # core runtime (fastapi, uvicorn, sqlalchemy, networkx, shapely, …)
+│   ├── requirements-dev.txt   # pytest
 │   ├── requirements-live.txt  # optional live-satellite extras (rasterio, pystac-client, …)
-│   └── Dockerfile
-├── package.json             # npm workspace: install frontend + mobile from the repo root
-├── frontend/
+│   └── Dockerfile          # python:3.11-slim, installs core + live extras, healthcheck
+├── package.json            # npm workspace: one `npm install` covers frontend + mobile
+├── frontend/               # React 19 + Vite + MapLibre client
 │   ├── src/
-│   │   ├── api/             # api client (client.ts)
-│   │   ├── components/      # MapView, RoutingPanel, MetricsPanel, HazardDrawer, …
-│   │   ├── hooks/           # useGeolocation, useHazards, useRoute, useShadows, useSatelliteStatus
-│   │   └── utils/           # formatting, comparison rows, Austin-time helpers (+ vitest tests)
-│   ├── nginx.conf
-│   └── Dockerfile
-├── mobile/                 # Expo mobile app (iOS/Android + web)
-│   ├── App.tsx
-│   ├── src/
-│   │   ├── screens/        # Home (now), Route, Places, Report, Settings
-│   │   ├── components/     # ScoreDial, NearbyRadar, SunArc, MiniRouteMap, …
-│   │   ├── hooks & state   # location, settings persistence, toasts, busy
-│   │   └── __tests__/      # vitest unit tests (24)
-│   └── app.json            # branding, splash, permissions
+│   │   ├── main.tsx         # entry: index.css + theme-overrides.css (the design system)
+│   │   ├── App.tsx          # state owner; renders the map, planner, layer menu and legend inline
+│   │   ├── api/client.ts    # typed fetch wrapper, relative `/api/v1` base
+│   │   ├── components/      # MapView, DirectionsPanel, RouteSummary, HazardDrawer
+│   │   │                    # (+ TimeSlider, StatusBar: built but not mounted yet — see below)
+│   │   ├── hooks/           # useGeolocation, useHazards, useRoadConditions, useRoute, useShadows
+│   │   │                    # (+ useSatelliteStatus, backing that unmounted StatusBar)
+│   │   └── utils/           # format.ts + time.ts (Austin-time helpers), each with a vitest file
+│   ├── vite.config.ts       # :5173, host 0.0.0.0, /api → 127.0.0.1:8000 proxy
+│   ├── nginx.conf           # container mode: serves dist/, proxies /api → backend:8000
+│   └── Dockerfile           # node:20 build → nginx:1.27
+├── mobile/                 # Expo Go app (iOS/Android + web)
+│   ├── App.tsx             # tab bar: Map · Navigate · Report · Profile
+│   ├── src/screens/        # MapScreen, NavigationScreen, ReportScreen, ProfileScreen
+│   ├── src/components/     # PlacePicker, WalkingMap (+ .native/.web platform split), CoolPathLogo
+│   ├── src/                # api.ts, state.tsx, config.ts, url.ts, score.ts, navigation.ts,
+│   │                       # places.ts, format.ts, theme.ts, types.ts, ErrorBoundary.tsx
+│   ├── src/__tests__/      # vitest unit tests (28)
+│   ├── scripts/start-expo-go.cjs  # resilient Expo Go launcher (LAN / tunnel / web)
+│   └── app.json            # branding, splash, location permissions
 ├── docker-compose.yml      # frontend + backend + redis (+ optional postgis profile)
-└── docs/ci-workflow.yml    # GitHub Actions CI (move to .github/workflows/ to enable)
+├── .env.example            # every COOLPATH_* knob, all optional
+└── docs/ci-workflow.yml    # GitHub Actions workflow (see Tests → CI)
 ```
+
+One `.gitignore` at the root covers Python, Node, Expo and editor noise for every workspace. Runtime
+state (`backend/data/`, `dist/`, `node_modules/`, `.venv/`) is ignored and regenerated on demand, so
+`git status` stays clean no matter how often you run the app.
+
+> **Two components sit unmounted.** `TimeSlider` (a 5 a.m.–9 p.m. sun scrubber) and `StatusBar`
+> (per-layer live/snapshot chips plus a refresh button, backed by `useSatelliteStatus`) are complete
+> and type-checked, but `App.tsx` does not render them — it pins shadows to the current instant.
+> Everything they need already exists server-side (`/layers/shadows?timestamp=`,
+> `/satellite/status`, `/satellite/refresh`), so surfacing them is a wiring task, not a new feature.
 
 ## Configuration (env vars, prefix `COOLPATH_`)
 
+No configuration is required to run the app; copy `.env.example` to `backend/.env` only if you want
+to change something (the file is resolved relative to the API's working directory). Settings come
+from the environment (or that `.env`) via `pydantic-settings`, so every entry below needs the
+`COOLPATH_` prefix — e.g. `COOLPATH_DATABASE_URL=…`. A bare `REDIS_URL=` in an env file is ignored
+for that reason; use `COOLPATH_REDIS_URL`.
+
 | Variable | Default | Purpose |
 |---|---|---|
-| `DATABASE_URL` | SQLite `backend/data/coolpath.db` | any SQLAlchemy URL (PostGIS supported) |
-| `REDIS_URL` | – (in-process cache) | Redis for dynamic caches |
+| `DATABASE_URL` | SQLite `backend/data/coolpath.db` (auto-created) | any SQLAlchemy URL (PostGIS supported) |
+| `REDIS_URL` | – (in-process TTL cache) | Redis for dynamic caches — must be `COOLPATH_REDIS_URL` to be picked up |
 | `OFFLINE_MODE` | `false` | skip all live fetches (CI) |
 | `LIVE_REFRESH_ON_STARTUP` | `true` | background live-source refresh |
-| `OVERPASS_URL` / `PC_STAC_URL` / `AUSTIN_CANOPY_URL` | Planetary Computer / data.austintexas.gov | live endpoints |
-| `BBOX` | Austin bbox | study area |
+| `LIVE_REFRESH_OSM` | `false` | also attempt a live Overpass graph fetch |
+| `OVERPASS_URL` / `PC_STAC_URL` / `AUSTIN_CANOPY_URL` / `AUSTIN_UHI_URL` | Overpass / Planetary Computer / data.austintexas.gov | live endpoints |
+| `GEOCODER_URL` / `GEOCODER_TIMEOUT_S` | Nominatim / `2.5` s | keyless address fallback for place search |
+| `BBOX` / `CENTER_LAT` / `CENTER_LON` / `TIMEZONE` | Austin bbox | study area |
 | `WALK_SPEED_MPS` | `1.34` | walk-time estimate |
-| `HAZARD_BUFFER_M` / `HAZARD_HALF_LIFE_H` | `50` / `48` | hazard decay model |
+| `HAZARD_BUFFER_M` / `HAZARD_HALF_LIFE_H` / `HAZARD_MAX_AGE_H` | `50` / `48` / `168` | hazard decay model |
+| `LIVE_FETCH_TIMEOUT_S` | `8.0` | per-request ceiling for every live source |
+| `CORS_ORIGINS` | `*` | comma-separated origin allowlist |
 
 ## Roadmap
 
@@ -322,6 +486,8 @@ graph, 50 m hazard buffer falloff + 48 h half-life decay, and end-to-end route/h
 - ORS/Valhalla isochrone overlays ("how far can I walk in the shade?")
 - Tree-planting opportunity scorer (high LST × low NDVI × high pedestrian demand)
 - Passive crowdsourcing from fitness-app traces
+- Move `docs/ci-workflow.yml` → `.github/workflows/ci.yml` to switch CI on, then publish a demo
+  deployment so people can try the app without installing anything
 
 ---
 

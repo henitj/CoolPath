@@ -1,6 +1,7 @@
-# NOTE: kept outside .github/workflows/ because the CI bot token lacks the
-# 'workflows' permission. A repo admin can move this file to
-# .github/workflows/ci.yml to enable GitHub Actions.
+# Kept at docs/ci-workflow.yml (not .github/workflows/) on purpose: the GitHub App token used by
+# tooling here cannot create or update workflow files, so a repo admin must move this file to
+# .github/workflows/ci.yml to switch CI on. Backend job = offline pytest + snapshot determinism;
+# frontend job = npm ci, lint, typecheck, build and both vitest suites.
 name: CI
 
 on:
