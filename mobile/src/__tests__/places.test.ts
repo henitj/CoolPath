@@ -27,7 +27,7 @@ describe('filterPlaces', () => {
 
 describe('kindMeta', () => {
   it('falls back for unknown kinds', () => {
-    expect(kindMeta('park').emoji).toBe('🌳')
+    expect(kindMeta('park').label).toBe('Park')
     expect(kindMeta('whatever').label).toBe('Place')
   })
 })

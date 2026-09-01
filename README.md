@@ -1,4 +1,4 @@
-# CoolPath 🌳 — Urban Micro-Climate & Walkability Mapper
+# CoolPath — Urban Micro-Climate & Walkability Mapper
 
 **Shade-optimized, heat-aware and safety-aware pedestrian routing for Downtown Austin, TX.**
 
@@ -12,19 +12,19 @@ Bounding box (EPSG:4326): `[-97.755, 30.260, -97.730, 30.278]` · Center: `30.26
 
 ---
 
-## ✨ Features
+## Features
 
 | | |
 |---|---|
-| 🛰️ **Satellite ingestion** | Sentinel-2 L2A (B04/B08 → NDVI) + Landsat 8/9 C2 L2 (surface temperature) via the Planetary Computer STAC API |
-| 🌵 **Austin open data** | City of Austin tree canopy (Socrata `uj6p-2j9z`), UHI disparity layer, sidewalk network — with graceful hydration fallback |
-| ☀️ **Dynamic shadows** | pysolar/NOAA solar azimuth + elevation → building-height shadow polygons cached per minute; slider scrubbs the sun from 5 a.m. to 9 p.m. |
-| 🧮 **Micro-climate weighting** | `W = dist · (1 + α·HeatIndex − β·CanopyNDVI + γ·HazardPenalty + Accessibility)` per edge, per profile |
-| ⚠️ **Crowdsourced hazards** | `POST/GET/DELETE /api/v1/hazards` — reports penalise a 50 m buffer instantly, then decay exponentially (48 h half-life, 7-day expiry) |
-| 🗺️ **3 routing profiles** | Fastest (A*) · Cool & Shaded · Safe & Accessible — every response carries a fastest-path baseline + metric deltas |
-| 🖥️ **Map-first directions UI** | Google Maps-style MapLibre screen: type/search a start and destination (or use device GPS / map pins), get an automatic route, see live green→red road conditions, and report hazards from the bottom-left button |
+| **Satellite ingestion** | Sentinel-2 L2A (B04/B08 → NDVI) + Landsat 8/9 C2 L2 (surface temperature) via the Planetary Computer STAC API |
+| **Austin open data** | City of Austin tree canopy (Socrata `uj6p-2j9z`), UHI disparity layer, sidewalk network — with graceful hydration fallback |
+| **Dynamic shadows** | pysolar/NOAA solar azimuth + elevation → building-height shadow polygons cached per minute; slider scrubbs the sun from 5 a.m. to 9 p.m. |
+| **Micro-climate weighting** | `W = dist · (1 + α·HeatIndex − β·CanopyNDVI + γ·HazardPenalty + Accessibility)` per edge, per profile |
+| **Crowdsourced hazards** | `POST/GET/DELETE /api/v1/hazards` — reports penalise a 50 m buffer instantly, then decay exponentially (48 h half-life, 7-day expiry) |
+| **3 routing profiles** | Fastest (A*) · Cool & Shaded · Safe & Accessible — every response carries a fastest-path baseline + metric deltas |
+| **Map-first directions UI** | Google Maps-style MapLibre screen: type/search a start and destination (or use device GPS / map pins), get an automatic route, see live green→red road conditions, and report hazards from the bottom-left button |
 
-## 🚀 Quickstart
+## Quickstart
 
 ### Docker (recommended)
 
@@ -71,51 +71,63 @@ npm test                # all workspace tests
 
 The API works standalone (curl / Swagger UI at `/docs`) without the frontend.
 
-## 📱 Run it on your phone (Expo)
+## Run it on your phone with Expo Go
 
-The repo ships **CoolPath Mobile** — a native iOS/Android app built with Expo in `mobile/`.
+CoolPath Mobile is a native iOS/Android walking app in `mobile/`. It is pinned
+at **Expo SDK 54 / React Native 0.81**, the SDK supported by the standard Expo
+Go app for this project. It uses `react-native-maps`, Expo Location, AsyncStorage,
+and Expo vector icons only — no custom development build is needed.
 
 ```bash
-# 1) start the backend (must be reachable from your phone → bind 0.0.0.0)
+# Terminal 1 — the API must be reachable by your phone
 cd backend
+python -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
 uvicorn app.main:app --host 0.0.0.0 --port 8000
 
-# 2) start Expo from the repo root
+# Terminal 2 — from the repository root
 cd ..
 npm install
-npm run mobile:web        # or npm run mobile:android / mobile:ios
+npm run mobile
 ```
 
-Scan the **QR code** printed in your terminal with the **Camera app (iOS)** or the
-**Expo Go app (Android)** — that's it.
+Open **Expo Go** on the phone and scan the QR code from the second terminal.
+Use the same Wi-Fi network for the phone and development computer. `npm run
+mobile` explicitly starts the stock Expo Go client in LAN mode. Its tiny
+cross-platform launcher skips only Expo's optional *online* dependency check,
+so restricted networks cannot prevent Metro from showing a QR; the checked-in
+SDK 54 lockfiles and `npm run mobile:doctor` perform version validation.
 
-* **Zero configuration networking:** when you scan the QR, the app reads Expo's
-  dev-server host and calls the API at `http://<your-computer's-LAN-IP>:8000`
-  automatically. (Android emulators use `10.0.2.2`; sandbox previews map the
-  `8000-` host automatically.)
-* If it can't connect, the app never crashes — it switches to a calm offline
-  mode, and **You → Connection** lets you set/test the server address manually
-  (persisted).
-* Android: allow the `http://` cleartext prompt if asked, and make sure phone
-  and computer are on the same Wi-Fi.
-* Unit tests: `npm test` in `mobile/` · Type check: `npm run typecheck`.
+Phone/API connection behavior:
 
-### What the app does
+- Expo's LAN manifest supplies the computer address, so the app automatically
+  calls `http://<computer-LAN-IP>:8000`. The API must bind to `0.0.0.0`, and a
+  local firewall must allow TCP port 8000.
+- **Profile → Server connection** shows the active address, checks it, and
+  accepts a manual URL if your network blocks LAN discovery.
+- A Metro tunnel delivers JavaScript but does not tunnel the separate Python
+  API. For `npm run mobile:tunnel`, configure a reachable HTTPS API with
+  `EXPO_PUBLIC_API_URL` before starting, or paste that address in Profile.
+- The app requests foreground location only. It continuously calibrates while
+  the app is open and is explicit that bundled pedestrian data covers **Downtown
+  Austin only**; it does not claim citywide walking coverage.
 
-| Tab | What you get |
+### Mobile experience
+
+| Tab | What it does |
 |---|---|
-| 🌿 **Now** | Breathing comfort dial (0–100) for *your exact spot*, a living radar (shade sectors, real sun position, nearby hazards at their true bearings), today's sun arc, and calm coaching tips |
-| 🧭 **Route** | Pick any two of 14 curated places (or "use my location"), compare **path scores for all three routing profiles side-by-side** with a mini shade map and a recommendation |
-| 📍 **Places** | Every spot scored *right now*, sorted coolest-first; save favourites |
-| ✋ **Report** | 3-tap hazard reporting at your current location; reports re-score nearby routes instantly |
-| ⚙️ **You** | Connection doctor, °C/°F, gentle haptics, data provenance |
+| **Map** | A real native MapKit/Google Maps canvas with light-green styling, live green/amber/red road-condition lines, searchable start and destination pickers, map-pin placement, walking ETA, and the bottom-left report control. |
+| **Navigate** | A follow-your-position walking map with ordered street maneuvers, remaining ETA/distance, off-route rerouting, and an end-and-save action. |
+| **Report** | GPS-gated, downtown-only condition reports that immediately affect nearby route costs. |
+| **Profile** | Persisted cool/care/direct route preference, an avoid-poor-red-paths switch, GPS accuracy and coverage feedback, server connection controls, and saved walk history. |
 
-The app logo is alive: it **breathes with live data, spins while routes are
-being scored, and celebrates when a report is planted.**
+The default **Cool route** optimizes the lowest walking opportunity cost by
+balancing shade and distance. Enabling **Avoid poor red paths** first searches
+for a route with every red-condition segment excluded; a red segment is used
+only when the mapped pedestrian graph has no clean connection.
 
 
-## 🏗️ Architecture
+## Architecture
 
 ```
 ┌─────────────────────────────  Frontend (React + TS + Vite + Tailwind)  ─────────────────────────┐
@@ -128,7 +140,7 @@ being scored, and celebrates when a report is planted.**
 │  satellite_service ─┐   Sentinel-2 NDVI + Landsat LST (Planetary Computer, lazy imports)       │
 │  austin_service   ──┤   Socrata tree canopy (uj6p-2j9z) + ArcGIS UHI disparity                  │
 │  osm_service      ──┤   Overpass pedestrian graph + building heights                            │
-│        ⤷ fallback →  📦 bundled offline snapshot (deterministic Downtown Austin model)          │
+│        ⤷ fallback → bundled offline snapshot (deterministic Downtown Austin model)          │
 │  solar.py (pysolar + NOAA fallback) → shadow_service (per-minute shadow unions, cached)         │
 │  environment.py (LST/NDVI bilinear sampling) → canopy_index (STRtree) → routing_engine          │
 │  hazard_service (SQLAlchemy; 50 m buffer + 48 h exponential decay)                              │
@@ -149,7 +161,7 @@ being scored, and celebrates when a report is planted.**
 | 3 | **Bundled snapshot** (`backend/app/data/snapshot/`) | everything | always available |
 
 The active branch is reported per-layer by `GET /api/v1/satellite/status` and surfaced as chips in
-the UI (`⟳ refresh live data` re-runs the hierarchy on demand — a daemon thread also runs it on
+the UI (`Refresh live data` re-runs the hierarchy on demand — a daemon thread also runs it on
 startup). In this sandboxed environment outbound geo APIs are firewalled, so the app demonstrably
 runs fully on the snapshot layer; on an open network the live sources take over automatically.
 
@@ -159,7 +171,7 @@ runs fully on the snapshot layer; on an open network the live sources take over 
 > [`backend/scripts/build_snapshot.py`](backend/scripts/build_snapshot.py) (seed 42) so the whole
 > product is reproducible offline and in CI. See `backend/app/data/snapshot/meta.json`.
 
-## 🧮 The routing model
+## The routing model
 
 For every graph edge `e`:
 
@@ -186,7 +198,7 @@ under canopy or shadow, comfort score.
 Shadow geometry: `shadow_len = height / tan(elevation)`, cast along the anti-solar bearing from
 every building footprint; per-minute unions are cached (in-process TTL + optional Redis).
 
-## 🔌 API reference (excerpt)
+## API reference (excerpt)
 
 ```bash
 # Cool & shaded route (compare vs fastest baseline)
@@ -239,7 +251,7 @@ Full OpenAPI docs: `http://localhost:8000/docs`.
 | `GET/POST` | `/api/v1/satellite/status|refresh` | Ingestion hierarchy status / manual refresh |
 | `GET` | `/api/v1/meta`, `/api/v1/health` | Metadata, health |
 
-## 🧪 Tests
+## Tests
 
 ```bash
 cd backend && python -m pytest tests/ -q          # solar, shadows, weights, road conditions,
@@ -253,7 +265,7 @@ DB. Highlights: solar position validated against pysolar/NOAA reference values (
 length ∝ `1/tan(elevation)`, cool-vs-fastest profile divergence on a geo-consistent two-corridor
 graph, 50 m hazard buffer falloff + 48 h half-life decay, and end-to-end route/hazard flows.
 
-## 📁 Repository layout
+## Repository layout
 
 ```
 ├── backend/
@@ -279,7 +291,7 @@ graph, 50 m hazard buffer falloff + 48 h half-life decay, and end-to-end route/h
 │   │   └── utils/           # formatting, comparison rows, Austin-time helpers (+ vitest tests)
 │   ├── nginx.conf
 │   └── Dockerfile
-├── mobile/                 # 📱 Expo mobile app (iOS/Android + web)
+├── mobile/                 # Expo mobile app (iOS/Android + web)
 │   ├── App.tsx
 │   ├── src/
 │   │   ├── screens/        # Home (now), Route, Places, Report, Settings
@@ -291,7 +303,7 @@ graph, 50 m hazard buffer falloff + 48 h half-life decay, and end-to-end route/h
 └── docs/ci-workflow.yml    # GitHub Actions CI (move to .github/workflows/ to enable)
 ```
 
-## ⚙️ Configuration (env vars, prefix `COOLPATH_`)
+## Configuration (env vars, prefix `COOLPATH_`)
 
 | Variable | Default | Purpose |
 |---|---|---|
@@ -304,7 +316,7 @@ graph, 50 m hazard buffer falloff + 48 h half-life decay, and end-to-end route/h
 | `WALK_SPEED_MPS` | `1.34` | walk-time estimate |
 | `HAZARD_BUFFER_M` / `HAZARD_HALF_LIFE_H` | `50` / `48` | hazard decay model |
 
-## 🗺️ Roadmap
+## Roadmap
 
 - Deck.gl 3-D buildings + shadow volume rendering
 - ORS/Valhalla isochrone overlays ("how far can I walk in the shade?")

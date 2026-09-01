@@ -125,7 +125,7 @@ export default function PlacesScreen({ onPickDestination }: { onPickDestination:
       {coolest && (
         <View style={styles.summaryCard}>
           <Text style={styles.summaryTitle}>
-            🌿 Coolest right now: <Text style={{ color: C.mint }}>{Math.round(coolest.comfort)} comfort</Text>
+            Coolest right now: <Text style={{ color: C.mint }}>{Math.round(coolest.comfort)} comfort</Text>
           </Text>
           <Text style={styles.summarySub}>
             {formatTempUnit(coolest.temp_c, units)} surface · {Math.round(coolest.shade_pct)}% shade — green rows are your best bets
@@ -157,7 +157,7 @@ export default function PlacesScreen({ onPickDestination }: { onPickDestination:
               />
             </Pressable>
             <Pressable style={styles.heart} onPress={() => void toggleSave(place.id)} hitSlop={8}>
-              <Text style={{ fontSize: 15 }}>{saved.includes(place.id) ? '💚' : '🤍'}</Text>
+              <Text style={styles.saveText}>{saved.includes(place.id) ? 'Saved' : 'Save'}</Text>
             </Pressable>
           </View>
         ))}
@@ -192,4 +192,5 @@ const styles = StyleSheet.create({
   offlineNote: { color: C.inkFaint, fontSize: 12.5, marginTop: 12, textAlign: 'center' },
   count: { color: C.inkFaint, fontSize: 12, fontWeight: '700' },
   heart: { position: 'absolute', right: 10, top: 10, padding: 4 },
+  saveText: { color: C.mintDeep, fontSize: 10.5, fontWeight: '800' },
 })

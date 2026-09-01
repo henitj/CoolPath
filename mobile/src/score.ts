@@ -9,15 +9,14 @@ export interface Verdict {
   tone: Tone
   color: string
   label: string
-  emoji: string
   message: string
 }
 
 const VERDICTS: Record<Tone, Omit<Verdict, 'tone' | 'message'>> = {
-  good: { color: '#5EEAD4', label: 'Great', emoji: '🌿' },
-  mild: { color: '#A7F3A0', label: 'Pleasant', emoji: '🙂' },
-  warm: { color: '#FCD34D', label: 'Warm', emoji: '🌞' },
-  hot: { color: '#FB8A80', label: 'Hot out', emoji: '🥵' },
+  good: { color: '#5EEAD4', label: 'Great' },
+  mild: { color: '#A7F3A0', label: 'Pleasant' },
+  warm: { color: '#FCD34D', label: 'Warm' },
+  hot: { color: '#FB8A80', label: 'Hot out' },
 }
 
 export function verdictForComfort(comfort: number): Verdict {
@@ -53,19 +52,6 @@ export function sunTip(altitudeDeg: number, isDaytime: boolean): string {
   if (altitudeDeg < 25) return 'Low sun — buildings cast long, walkable shadows'
   if (altitudeDeg > 70) return 'High sun — shade is scarce, plan around canopy'
   return 'Mid sun — edges of buildings still give good shade'
-}
-
-export function hazardEmoji(category: string): string {
-  const map: Record<string, string> = {
-    broken_sidewalk: '🚧',
-    extreme_sun: '☀️',
-    unlit_area: '🌑',
-    construction: '👷',
-    blocked_path: '⛔',
-    flooding: '🌊',
-    other: '📍',
-  }
-  return map[category] ?? '📍'
 }
 
 export function profileCopy(profile: 'cool' | 'safe' | 'fastest'): { title: string; blurb: string } {

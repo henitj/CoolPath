@@ -61,7 +61,7 @@ export default function PathScoreRow({
       )}
       {m.hazard_count > 0 && (
         <Text style={styles.hazardNote}>
-          ⚠️ {m.hazard_count} reported hazard{m.hazard_count > 1 ? 's' : ''} along this path
+          Caution: {m.hazard_count} reported hazard{m.hazard_count > 1 ? 's' : ''} along this path
         </Text>
       )}
     </View>

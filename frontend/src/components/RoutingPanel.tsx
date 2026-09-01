@@ -33,7 +33,7 @@ function CoordRow(props: {
       <button className="flex-1 text-left text-sm" onClick={() => onPick(active ? null : which)}>
         <div className="font-medium text-slate-200">{label}</div>
         <div className="font-mono text-[11px] text-slate-400">
-          {coord ? `${coord[1].toFixed(4)}, ${coord[0].toFixed(4)}` : 'click map or use ⌖'}
+          {coord ? `${coord[1].toFixed(4)}, ${coord[0].toFixed(4)}` : 'click map or use location'}
         </div>
       </button>
       <button
@@ -41,7 +41,7 @@ function CoordRow(props: {
         className="rounded-md px-1.5 py-1 text-slate-400 hover:bg-slate-700/60 hover:text-cyan-300"
         onClick={() => onLocate(which)}
       >
-        ⌖
+        Locate
       </button>
     </div>
   )
@@ -79,7 +79,6 @@ export default function RoutingPanel(props: RoutingPanelProps) {
                 : 'border-slate-700/70 bg-slate-900/40 hover:bg-slate-800/60'
             }`}
           >
-            <div className="text-lg leading-none">{p.icon}</div>
             <div className={`mt-1 text-[11px] font-semibold leading-tight ${props.profile === p.id ? p.accent : 'text-slate-400'}`}>
               {p.label}
             </div>
@@ -123,7 +122,7 @@ export default function RoutingPanel(props: RoutingPanelProps) {
       </div>
 
       {geo.coords && geo.error === null && (
-        <p className="mt-1.5 text-[11px] text-emerald-400/80">📍 located: {geo.coords[1].toFixed(4)}, {geo.coords[0].toFixed(4)}</p>
+        <p className="mt-1.5 text-[11px] text-emerald-400/80">Located: {geo.coords[1].toFixed(4)}, {geo.coords[0].toFixed(4)}</p>
       )}
       {(geo.error || props.error) && (
         <p className="mt-1.5 rounded-md bg-rose-500/10 px-2 py-1 text-[11px] text-rose-300">

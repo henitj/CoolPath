@@ -15,12 +15,14 @@ describe('apiUrlFromHostUri (the QR magic)', () => {
   it('derives the API host from the Expo dev-server host', () => {
     expect(apiUrlFromHostUri('192.168.1.20:8081')).toBe('http://192.168.1.20:8000')
     expect(apiUrlFromHostUri('10.0.0.7:19000')).toBe('http://10.0.0.7:8000')
+    expect(apiUrlFromHostUri('exp://192.168.1.20:8081')).toBe('http://192.168.1.20:8000')
+    // Expo can advertise a mDNS hostname instead of an IPv4 address.
+    expect(apiUrlFromHostUri('MacBook-Pro.local:8081')).toBe('http://MacBook-Pro.local:8000')
   })
   it('ignores loopback and junk', () => {
     expect(apiUrlFromHostUri('localhost:8081')).toBeNull()
     expect(apiUrlFromHostUri('127.0.0.1:8081')).toBeNull()
     expect(apiUrlFromHostUri('0.0.0.0:8081')).toBeNull()
-    expect(apiUrlFromHostUri('MacBook-Pro.local:8081')).toBeNull()
     expect(apiUrlFromHostUri(undefined)).toBeNull()
     expect(apiUrlFromHostUri('')).toBeNull()
   })

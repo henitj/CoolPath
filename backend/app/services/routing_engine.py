@@ -89,6 +89,9 @@ class RouteResult:
     node_path: list[int] = field(default_factory=list)
     samples: dict = field(default_factory=dict)
     warnings: list[str] = field(default_factory=list)
+    # Ordered, map-coordinate-indexed maneuvers suitable for a phone-sized
+    # turn-by-turn view. ``coordinate_index`` points into ``coords``.
+    steps: list[dict] = field(default_factory=list)
 
 
 def clamp01(v: float) -> float:
@@ -215,7 +218,8 @@ class RoutingEngine:
         return penalties.get(key, 0.0)
 
     def weight(self, feats: EdgeFeatures, params: WeightParams,
-               shadow_frac: float, shade: float, hazard_pen: float) -> float:
+               shadow_frac: float, shade: float, hazard_pen: float,
+               avoid_red_paths: bool = False) -> float:
         heat = heat_index(feats.lst_c)
         green = clamp01(0.55 * canopy_norm(feats.ndvi) + 0.45 * clamp01(
             (feats.canopy_frac * 0.5 + shade * 0.5)
@@ -233,11 +237,23 @@ class RoutingEngine:
             + accessibility
         )
         factor = max(0.25, min(factor, 6.0))
+        if avoid_red_paths:
+            # This is the fallback cost used only if hiding every poor edge
+            # disconnects the graph.  The primary search below hides red
+            # edges altogether, which makes the preference a genuine
+            # "avoid whenever a route exists" guarantee instead of merely a
+            # weak cost multiplier. Keeping this fallback finite preserves a
+            # route on a cul-de-sac or all-red corridor.
+            quality = self._condition_quality(feats, shade, hazard_pen)
+            if quality < 40.0:
+                factor *= 30.0
+            elif quality < 60.0:
+                factor *= 3.0
         return feats.length_m * factor
 
     # ----------------------------------------------------------------- routing
     def route(self, origin: LonLat, destination: LonLat, profile: str,
-              when: datetime) -> RouteResult:
+              when: datetime, avoid_red_paths: bool = False) -> RouteResult:
         params = PROFILES[profile]
         origin_node = self.nearest_node(*origin)
         dest_node = self.nearest_node(*destination)
@@ -261,7 +277,10 @@ class RoutingEngine:
             if direct_distance < 10.0:
                 raise NoRouteError("origin and destination are too close together to route")
             warnings.append("Short local walk — both points share the nearest mapped street node")
-            return self._local_route(origin, destination, profile, when, warnings)
+            return self._local_route(
+                origin, destination, profile, when, warnings,
+                avoid_red_paths=avoid_red_paths,
+            )
 
         if snap_o > 120:
             warnings.append(f"origin snapped {snap_o:.0f} m to the nearest node")
@@ -292,6 +311,23 @@ class RoutingEngine:
         def weight_fn(u: int, v: int, data: dict) -> float:
             feats = self.edge_features(u, v, data)
             shadow_frac, shade, hazard_pen = cached_parts(u, v)
+            return self.weight(
+                feats, params, shadow_frac, shade, hazard_pen,
+                avoid_red_paths=avoid_red_paths,
+            )
+
+        def clean_weight_fn(u: int, v: int, data: dict) -> float | None:
+            """Hide red edges for the first pass of the avoid-red route.
+
+            NetworkX accepts ``None`` from a callable weight as a hidden
+            edge. That lets us distinguish "a detour exists" from "a route
+            only exists through a poor block", rather than relying on an
+            arbitrary penalty multiplier.
+            """
+            feats = self.edge_features(u, v, data)
+            shadow_frac, shade, hazard_pen = cached_parts(u, v)
+            if self._condition_quality(feats, shade, hazard_pen) < 40.0:
+                return None
             return self.weight(feats, params, shadow_frac, shade, hazard_pen)
 
         def heuristic(u: int, v: int) -> float:
@@ -299,8 +335,27 @@ class RoutingEngine:
                                self.graph.nodes[v]["x"], self.graph.nodes[v]["y"]) * 0.25
 
         try:
-            node_path = nx.astar_path(self.graph, origin_node, dest_node,
-                                      heuristic=heuristic, weight=weight_fn)
+            if avoid_red_paths:
+                try:
+                    # Strictly avoid poor-condition links whenever the
+                    # remaining network can connect these two stops.
+                    node_path = nx.astar_path(
+                        self.graph, origin_node, dest_node,
+                        heuristic=heuristic, weight=clean_weight_fn,
+                    )
+                except nx.NetworkXNoPath:
+                    # A route is still more useful than an avoid-red error.
+                    # The finite fallback strongly discourages red while
+                    # retaining an otherwise isolated destination.
+                    node_path = nx.astar_path(
+                        self.graph, origin_node, dest_node,
+                        heuristic=heuristic, weight=weight_fn,
+                    )
+            else:
+                node_path = nx.astar_path(
+                    self.graph, origin_node, dest_node,
+                    heuristic=heuristic, weight=weight_fn,
+                )
         except nx.NetworkXNoPath as exc:
             raise NoRouteError("no pedestrian path between the requested points") from exc
 
@@ -317,7 +372,9 @@ class RoutingEngine:
         if snap_d > 0.5:
             coords.append(destination)
 
-        metrics, samples = self._metrics_for_path(node_path, params, when)
+        metrics, samples = self._metrics_for_path(
+            node_path, params, when, avoid_red_paths=avoid_red_paths,
+        )
         connector_m = snap_o + snap_d
         if connector_m > 0.5:
             # Include the small walk from/to the nearest pedestrian edge in
@@ -326,8 +383,20 @@ class RoutingEngine:
             metrics.distance_m += connector_m
             metrics.est_walk_min += connector_min
             metrics.effort_min += connector_min
+        steps = self._steps_for_path(
+            node_path, coords, origin, destination, snap_o, snap_d,
+        )
+        if avoid_red_paths:
+            red_steps = self._poor_edge_count(node_path, when)
+            if red_steps:
+                warnings.append(
+                    "A poor-condition block remains because the mapped network has no better connection"
+                )
+            else:
+                warnings.append("Poor-condition paths avoided where alternatives exist")
         return RouteResult(profile=profile, coords=coords, metrics=metrics,
-                           node_path=node_path, samples=samples, warnings=warnings)
+                           node_path=node_path, samples=samples, warnings=warnings,
+                           steps=steps)
 
     def _local_route(
         self,
@@ -336,6 +405,7 @@ class RoutingEngine:
         profile: str,
         when: datetime,
         warnings: list[str],
+        avoid_red_paths: bool = False,
     ) -> RouteResult:
         """Score a short direct walk when both stops share one graph node."""
         params = PROFILES[profile]
@@ -365,7 +435,17 @@ class RoutingEngine:
         points = [Point(point) for point in line_sample_points(list(geometry.coords), 10.0)]
         temps = [self.environment.lst_at(point.x, point.y) for point in points]
         ndvis = [self.environment.ndvi_at(point.x, point.y) for point in points]
-        weighted_length = self.weight(feats, params, shadow_frac, shade, hazard_penalty)
+        weighted_length = self.weight(
+            feats, params, shadow_frac, shade, hazard_penalty,
+            avoid_red_paths=avoid_red_paths,
+        )
+        if avoid_red_paths:
+            if self._condition_quality(feats, shade, hazard_penalty) < 40.0:
+                warnings.append(
+                    "A poor-condition block remains because the mapped network has no better connection"
+                )
+            else:
+                warnings.append("Poor-condition paths avoided where alternatives exist")
         avg_temp = sum(temps) / len(temps) if temps else feats.lst_c
         avg_ndvi = sum(ndvis) / len(ndvis) if ndvis else feats.ndvi
         comfort = 100.0 * clamp01(
@@ -392,13 +472,199 @@ class RoutingEngine:
             "ndvi": [round(value, 3) for value in ndvis],
             "shade": [round(shade, 2)] * len(points),
         }
+        bearing = self._bearing_degrees(origin, destination)
+        steps = [
+            {
+                "instruction": f"Head {self._cardinal_direction(bearing)} on Local walk",
+                "street": "Local walk",
+                "maneuver": "depart",
+                "distance_m": round(feats.length_m, 1),
+                "duration_min": round(metrics.est_walk_min, 1),
+                "coordinate_index": 0,
+            },
+            {
+                "instruction": "Arrive at destination",
+                "street": "",
+                "maneuver": "arrive",
+                "distance_m": 0.0,
+                "duration_min": 0.0,
+                "coordinate_index": 1,
+            },
+        ]
         return RouteResult(
             profile=profile,
             coords=[origin, destination],
             metrics=metrics,
             samples=samples,
             warnings=warnings,
+            steps=steps,
         )
+
+    @staticmethod
+    def _bearing_degrees(start: LonLat, end: LonLat) -> float:
+        """Initial compass bearing from ``start`` to ``end`` in degrees."""
+        lon1, lat1 = map(math.radians, start)
+        lon2, lat2 = map(math.radians, end)
+        delta_lon = lon2 - lon1
+        x = math.sin(delta_lon) * math.cos(lat2)
+        y = math.cos(lat1) * math.sin(lat2) - math.sin(lat1) * math.cos(lat2) * math.cos(delta_lon)
+        return (math.degrees(math.atan2(x, y)) + 360.0) % 360.0
+
+    @staticmethod
+    def _cardinal_direction(bearing: float) -> str:
+        directions = ("north", "northeast", "east", "southeast", "south", "southwest", "west", "northwest")
+        return directions[int((bearing + 22.5) // 45.0) % len(directions)]
+
+    @staticmethod
+    def _turn_maneuver(previous_bearing: float, bearing: float) -> str:
+        """Return a compact maneuver name from two compass bearings."""
+        delta = ((bearing - previous_bearing + 540.0) % 360.0) - 180.0
+        magnitude = abs(delta)
+        if magnitude <= 20.0:
+            return "straight"
+        side = "right" if delta > 0 else "left"
+        if magnitude <= 50.0:
+            return f"slight-{side}"
+        if magnitude >= 145.0:
+            return "u-turn"
+        return f"turn-{side}"
+
+    @staticmethod
+    def _street_name(feats: EdgeFeatures) -> str:
+        if feats.name.strip():
+            return feats.name.strip()
+        if feats.highway in {"footway", "path", "pedestrian", "steps"}:
+            return "Pedestrian path"
+        return "Walkway"
+
+    def _steps_for_path(
+        self,
+        node_path: list[int],
+        coords: list[LonLat],
+        origin: LonLat,
+        destination: LonLat,
+        snap_o: float,
+        snap_d: float,
+    ) -> list[dict]:
+        """Build concise, phone-friendly street-by-street walking maneuvers.
+
+        Graph edge names are merged only when consecutive pieces stay on the
+        same street, so a walker sees each named street change rather than a
+        noisy instruction for every tiny network segment.  Every step carries
+        an index into the returned route geometry for on-device progress
+        tracking without a second map-matching service.
+        """
+        if len(node_path) < 2:
+            return []
+
+        origin_has_connector = snap_o > 0.5
+        offset = 1 if origin_has_connector else 0
+        grouped: list[dict] = []
+        for edge_index, (u, v) in enumerate(zip(node_path, node_path[1:])):
+            data = self.graph.get_edge_data(u, v) or {}
+            feats = self.edge_features(u, v, data)
+            start = (self.graph.nodes[u]["x"], self.graph.nodes[u]["y"])
+            end = (self.graph.nodes[v]["x"], self.graph.nodes[v]["y"])
+            bearing = self._bearing_degrees(start, end)
+            street = self._street_name(feats)
+            if grouped and grouped[-1]["street"] == street:
+                grouped[-1]["distance_m"] += feats.length_m
+                grouped[-1]["end_bearing"] = bearing
+            else:
+                grouped.append({
+                    "street": street,
+                    "distance_m": feats.length_m,
+                    "start_bearing": bearing,
+                    "end_bearing": bearing,
+                    "coordinate_index": offset + edge_index,
+                })
+
+        steps: list[dict] = []
+        previous_bearing: float | None = None
+        if snap_o > 5.0:
+            first_node = (self.graph.nodes[node_path[0]]["x"], self.graph.nodes[node_path[0]]["y"])
+            connector_bearing = self._bearing_degrees(origin, first_node)
+            steps.append({
+                "instruction": f"Head {self._cardinal_direction(connector_bearing)} to the pedestrian network",
+                "street": "Access path",
+                "maneuver": "depart",
+                "distance_m": round(snap_o, 1),
+                "duration_min": round(snap_o / self.settings.walk_speed_mps / 60.0, 1),
+                "coordinate_index": 0,
+            })
+            previous_bearing = connector_bearing
+
+        for group in grouped:
+            street = str(group["street"])
+            bearing = float(group["start_bearing"])
+            if previous_bearing is None:
+                maneuver = "depart"
+                instruction = f"Head {self._cardinal_direction(bearing)} on {street}"
+            else:
+                maneuver = self._turn_maneuver(previous_bearing, bearing)
+                if maneuver == "straight":
+                    instruction = f"Continue on {street}"
+                elif maneuver == "u-turn":
+                    instruction = f"Make a U-turn onto {street}"
+                elif maneuver.startswith("slight-"):
+                    instruction = f"Bear {maneuver.split('-', 1)[1]} onto {street}"
+                else:
+                    instruction = f"Turn {maneuver.split('-', 1)[1]} onto {street}"
+            distance = float(group["distance_m"])
+            steps.append({
+                "instruction": instruction,
+                "street": street,
+                "maneuver": maneuver,
+                "distance_m": round(distance, 1),
+                "duration_min": round(distance / self.settings.walk_speed_mps / 60.0, 1),
+                "coordinate_index": int(group["coordinate_index"]),
+            })
+            previous_bearing = float(group["end_bearing"])
+
+        last_network_index = offset + len(node_path) - 1
+        if snap_d > 5.0:
+            last_node = (self.graph.nodes[node_path[-1]]["x"], self.graph.nodes[node_path[-1]]["y"])
+            connector_bearing = self._bearing_degrees(last_node, destination)
+            maneuver = self._turn_maneuver(previous_bearing or connector_bearing, connector_bearing)
+            if maneuver == "straight":
+                instruction = "Continue to destination"
+            elif maneuver == "u-turn":
+                instruction = "Make a U-turn toward destination"
+            elif maneuver.startswith("slight-"):
+                instruction = f"Bear {maneuver.split('-', 1)[1]} to destination"
+            else:
+                instruction = f"Turn {maneuver.split('-', 1)[1]} to destination"
+            steps.append({
+                "instruction": instruction,
+                "street": "Access path",
+                "maneuver": maneuver,
+                "distance_m": round(snap_d, 1),
+                "duration_min": round(snap_d / self.settings.walk_speed_mps / 60.0, 1),
+                "coordinate_index": last_network_index,
+            })
+
+        steps.append({
+            "instruction": "Arrive at destination",
+            "street": "",
+            "maneuver": "arrive",
+            "distance_m": 0.0,
+            "duration_min": 0.0,
+            "coordinate_index": len(coords) - 1,
+        })
+        return steps
+
+    def _poor_edge_count(self, node_path: list[int], when: datetime) -> int:
+        """Count unavoidable red blocks in a route for an honest UI notice."""
+        penalties = self._edge_hazard_penalties(when)
+        poor = 0
+        for u, v in zip(node_path, node_path[1:]):
+            data = self.graph.get_edge_data(u, v) or {}
+            feats = self.edge_features(u, v, data)
+            _, shade = self.shade_components(feats, when)
+            penalty = penalties.get((u, v), penalties.get((v, u), 0.0))
+            if self._condition_quality(feats, shade, penalty) < 40.0:
+                poor += 1
+        return poor
 
     def road_conditions(self, when: datetime) -> dict:
         """Return a live, map-ready condition score for every walkable edge.
@@ -497,7 +763,7 @@ class RoutingEngine:
         return "#dc2626"
 
     def _metrics_for_path(self, node_path: list[int], params: WeightParams,
-                          when: datetime) -> tuple[RouteMetrics, dict]:
+                          when: datetime, avoid_red_paths: bool = False) -> tuple[RouteMetrics, dict]:
         total_len = 0.0
         total_weighted = 0.0
         temps: list[float] = []
@@ -518,7 +784,10 @@ class RoutingEngine:
             shadow_frac, shade = self.shade_components(feats, when)
             hazard_pen = penalty_for(u, v)
 
-            weight = self.weight(feats, params, shadow_frac, shade, hazard_pen)
+            weight = self.weight(
+                feats, params, shadow_frac, shade, hazard_pen,
+                avoid_red_paths=avoid_red_paths,
+            )
             total_len += feats.length_m
             total_weighted += weight
             pts = [Point(p) for p in line_sample_points(list(feats.geom.coords), 10.0)]

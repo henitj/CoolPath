@@ -45,6 +45,7 @@ export interface RoutePayload {
   profile: ProfileId
   timestamp?: string
   include_baseline?: boolean
+  avoid_red_paths?: boolean
 }
 
 export const api = {

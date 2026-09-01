@@ -25,6 +25,25 @@ export interface Comparison {
   effort_delta_min: number
 }
 
+export type RouteManeuver =
+  | 'depart'
+  | 'straight'
+  | 'slight-left'
+  | 'slight-right'
+  | 'turn-left'
+  | 'turn-right'
+  | 'u-turn'
+  | 'arrive'
+
+export interface RouteStep {
+  instruction: string
+  street: string
+  maneuver: RouteManeuver
+  distance_m: number
+  duration_min: number
+  coordinate_index: number
+}
+
 export interface RouteFeature {
   type: 'Feature'
   geometry: { type: 'LineString'; coordinates: [number, number][] }
@@ -36,6 +55,8 @@ export interface RouteFeature {
     timestamp?: string
     samples?: { temp_c: number[]; ndvi: number[]; shade: number[] }
     warnings?: string[]
+    steps?: RouteStep[]
+    routing_preferences?: { avoid_red_paths: boolean }
   }
 }
 

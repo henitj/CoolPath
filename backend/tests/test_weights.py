@@ -79,9 +79,13 @@ def mini():
         g.add_edge(u, v, length=haversine_m(*a, *b), geom=LineString([a, b]), name="",
                    highway="residential", surface="asphalt", lit=True, sidewalk=True)
 
-    link(1, 2); link(2, 3)   # hot corridor
-    link(4, 5); link(5, 6)   # shaded corridor
-    link(1, 4); link(2, 5); link(3, 6)  # thin connectors
+    link(1, 2)
+    link(2, 3)  # hot corridor
+    link(4, 5)
+    link(5, 6)  # shaded corridor
+    link(1, 4)
+    link(2, 5)
+    link(3, 6)  # thin connectors
 
     shadow = ShadowService([], settings, _StubCache())
     engine = RoutingEngine(g, env, shadow, settings, _StubCache(), canopy_index=_StubCanopyIndex())
@@ -160,3 +164,98 @@ def test_clamp01():
     assert clamp01(-1) == 0
     assert clamp01(0.5) == 0.5
     assert clamp01(2) == 1
+
+
+def test_avoid_red_paths_prefers_a_non_red_detour(mini):
+    """The red-path preference must affect A*, not merely response copy."""
+    when = datetime(2024, 6, 21, 18, 0, tzinfo=UTC)
+    changed = [(1, 2), (2, 3)]
+    prior = []
+    for u, v in changed:
+        data = mini.graph[u][v]
+        prior.append((u, v, data["sidewalk"], data["lit"]))
+        data["sidewalk"] = False
+        data["lit"] = False
+        data.pop("_features", None)
+    try:
+        direct = mini.route((-97.7410, 30.2674), (-97.7440, 30.2674), "fastest", when)
+        avoided = mini.route(
+            (-97.7410, 30.2674), (-97.7440, 30.2674), "fastest", when,
+            avoid_red_paths=True,
+        )
+        assert {1, 2, 3} <= set(direct.node_path)
+        assert {4, 5, 6} <= set(avoided.node_path)
+        assert any("Poor-condition paths avoided" in warning for warning in avoided.warnings)
+    finally:
+        for u, v, sidewalk, lit in prior:
+            data = mini.graph[u][v]
+            data["sidewalk"] = sidewalk
+            data["lit"] = lit
+            data.pop("_features", None)
+
+
+def test_avoid_red_paths_hides_red_edges_even_for_a_very_long_detour(mini, monkeypatch):
+    """An alternative must win even when a finite penalty would not be enough."""
+    when = datetime(2024, 6, 21, 18, 0, tzinfo=UTC)
+    red_edges = {(1, 2), (2, 3)}
+    changed = list(mini.graph.edges)
+    prior = []
+    for u, v in changed:
+        data = mini.graph[u][v]
+        prior.append((u, v, data["sidewalk"], data["length"]))
+        data["sidewalk"] = (u, v) not in red_edges and (v, u) not in red_edges
+        # Make the all-clean route much longer than a 30x red penalty. A
+        # multiplier-only implementation would still choose the red shortcut.
+        if data["sidewalk"]:
+            data["length"] = 10_000.0
+        data.pop("_features", None)
+    monkeypatch.setattr(
+        mini,
+        "_condition_quality",
+        lambda feats, shade, hazard_penalty: 10.0 if not feats.sidewalk else 90.0,
+    )
+    try:
+        direct = mini.route((-97.7410, 30.2674), (-97.7440, 30.2674), "fastest", when)
+        avoided = mini.route(
+            (-97.7410, 30.2674),
+            (-97.7440, 30.2674),
+            "fastest",
+            when,
+            avoid_red_paths=True,
+        )
+        assert {1, 2, 3} <= set(direct.node_path)
+        assert {4, 5, 6} <= set(avoided.node_path)
+        assert all(node in {1, 3, 4, 5, 6} for node in avoided.node_path)
+    finally:
+        for u, v, sidewalk, length in prior:
+            data = mini.graph[u][v]
+            data["sidewalk"] = sidewalk
+            data["length"] = length
+            data.pop("_features", None)
+
+
+def test_avoid_red_paths_uses_a_red_link_when_it_is_the_only_connection(mini, monkeypatch):
+    """The strict preference remains usable on an all-red local network."""
+    when = datetime(2024, 6, 21, 18, 0, tzinfo=UTC)
+    prior = []
+    for u, v in mini.graph.edges:
+        data = mini.graph[u][v]
+        prior.append((u, v, data["sidewalk"]))
+        data["sidewalk"] = False
+        data.pop("_features", None)
+    monkeypatch.setattr(mini, "_condition_quality", lambda *_: 10.0)
+    try:
+        result = mini.route(
+            (-97.7410, 30.2674),
+            (-97.7440, 30.2674),
+            "fastest",
+            when,
+            avoid_red_paths=True,
+        )
+        assert result.node_path
+        assert any("poor-condition block remains" in warning for warning in result.warnings)
+    finally:
+        for u, v, sidewalk in prior:
+            data = mini.graph[u][v]
+            data["sidewalk"] = sidewalk
+            data.pop("_features", None)

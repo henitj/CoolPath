@@ -1,7 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
   coachingTip,
-  hazardEmoji,
   profileCopy,
   shadeLabel,
   sunTip,
@@ -21,7 +20,6 @@ describe('verdictForComfort', () => {
       const v = verdictForComfort(c)
       expect(v.message.length).toBeGreaterThan(5)
       expect(v.color).toMatch(/^#/)
-      expect(v.emoji.length).toBeGreaterThan(0)
     }
   })
 })
@@ -45,15 +43,11 @@ describe('tempBand / shadeLabel / sunTip', () => {
   })
 })
 
-describe('profileCopy & hazardEmoji', () => {
+describe('profileCopy', () => {
   it('describes the three paths', () => {
     expect(profileCopy('cool').title).toBe('Coolest')
     expect(profileCopy('safe').title).toBe('Easiest')
     expect(profileCopy('fastest').title).toBe('Shortest')
-  })
-  it('maps every hazard category and falls back', () => {
-    expect(hazardEmoji('flooding')).toBe('🌊')
-    expect(hazardEmoji('mystery')).toBe('📍')
   })
 })
 

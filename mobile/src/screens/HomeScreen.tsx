@@ -57,7 +57,6 @@ export default function HomeScreen({ onGoRouting }: { onGoRouting: () => void })
     <ScrollView contentContainerStyle={styles.content} showsVerticalScrollIndicator={false}>
       <Text style={styles.greeting}>{greeting()}</Text>
       <Text style={styles.locationNote}>
-        {locationStatus === 'live' ? '📍 ' : locationStatus === 'locating' ? '⌛ ' : '📌 '}
         {locationNote} · {coords.lat.toFixed(4)}, {coords.lon.toFixed(4)}
       </Text>
 

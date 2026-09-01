@@ -13,8 +13,8 @@
   },
   "dependencies": {
     "maplibre-gl": "^6.6.0",
-    "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react": "19.1.0",
+    "react-dom": "19.1.0"
   },
   "devDependencies": {
     "@types/node": "^24.13.3",

@@ -6,8 +6,6 @@ from typing import Literal
 
 from pydantic import BaseModel, Field, field_validator
 
-from app.core.constants import HAZARD_CATEGORIES
-
 HazardCategory = Literal[
     "broken_sidewalk", "extreme_sun", "unlit_area",
     "construction", "blocked_path", "flooding", "other",
@@ -22,6 +20,10 @@ class RouteRequest(BaseModel):
         None, description="Shadow computation instant; defaults to now (America/Chicago)."
     )
     include_baseline: bool = Field(True, description="Also return the fastest-path baseline route.")
+    avoid_red_paths: bool = Field(
+        False,
+        description="Treat poor/red live-condition blocks as a last resort when an alternative exists.",
+    )
 
     @field_validator("origin", "destination")
     @classmethod

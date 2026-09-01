@@ -18,18 +18,18 @@ export const FALLBACK_PLACES: Place[] = [
   { id: 'congress-6th', name: 'Congress Ave & 6th St', lon: -97.7425, lat: 30.2674, kind: 'intersection', blurb: 'Center of downtown' },
 ]
 
-export const KIND_META: Record<string, { label: string; emoji: string }> = {
-  landmark: { label: 'Landmark', emoji: '🏛️' },
-  plaza: { label: 'Plaza', emoji: '⛲' },
-  district: { label: 'District', emoji: '🏙️' },
-  trail: { label: 'Trail', emoji: '🥾' },
-  park: { label: 'Park', emoji: '🌳' },
-  campus: { label: 'Campus', emoji: '🎓' },
-  intersection: { label: 'Corner', emoji: '📍' },
+export const KIND_META: Record<string, { label: string }> = {
+  landmark: { label: 'Landmark' },
+  plaza: { label: 'Plaza' },
+  district: { label: 'District' },
+  trail: { label: 'Trail' },
+  park: { label: 'Park' },
+  campus: { label: 'Campus' },
+  intersection: { label: 'Corner' },
 }
 
-export function kindMeta(kind: string): { label: string; emoji: string } {
-  return KIND_META[kind] ?? { label: 'Place', emoji: '📍' }
+export function kindMeta(kind: string): { label: string } {
+  return KIND_META[kind] ?? { label: 'Place' }
 }
 
 export function filterPlaces(places: Place[], query: string): Place[] {

@@ -6,6 +6,7 @@ import type {
   NowConditions,
   Place,
   ProfileId,
+  RoadConditionsResponse,
   RouteResponse,
 } from './types'
 
@@ -36,7 +37,7 @@ export function getBaseUrl(): string {
 
 export function friendlyError(err: unknown): string {
   if (err instanceof ApiUnreachableError) {
-    return "Can't reach the CoolPath server. Check that the backend is running and the address is right in Settings."
+    return "Can't reach the CoolPath server. Check that the backend is running and the address is right in Profile."
   }
   if (err instanceof Error) {
     if (/aborted|timeout/i.test(err.message)) return 'The server took too long to answer. Try again.'
@@ -94,11 +95,21 @@ export const api = {
 
   places: () => request<{ places: Place[] }>('/places', { timeoutMs: 6000 }),
 
+  searchPlaces: (query: string, limit = 8) =>
+    request<{ places: Place[]; source: string }>(
+      `/places/search?q=${encodeURIComponent(query)}&limit=${Math.max(1, Math.min(limit, 20))}`,
+      { timeoutMs: 6500 },
+    ),
+
   route: (payload: {
     origin: [number, number]
     destination: [number, number]
     profile: ProfileId
+    avoid_red_paths?: boolean
+    include_baseline?: boolean
   }) => request<RouteResponse>('/route', { method: 'POST', body: JSON.stringify(payload) }),
+
+  roadConditions: () => request<RoadConditionsResponse>('/layers/road-conditions', { timeoutMs: 9000 }),
 
   hazards: () =>
     request<{ type: 'FeatureCollection'; features: HazardFeature[]; count: number }>('/hazards'),

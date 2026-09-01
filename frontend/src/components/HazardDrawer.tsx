@@ -90,7 +90,7 @@ export default function HazardDrawer({
             aria-checked={category === item.id}
             onClick={() => setCategory(item.id)}
           >
-            <span>{HAZARD_ICONS[item.id] ?? '⚠'}</span>
+            <span>{HAZARD_ICONS[item.id] ?? 'Other'}</span>
             {item.label}
           </button>
         ))}

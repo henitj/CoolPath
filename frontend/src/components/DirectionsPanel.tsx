@@ -240,7 +240,7 @@ export default function DirectionsPanel({
                 onClick={() => onProfile(option.id)}
                 title={option.blurb}
               >
-                <span>{option.icon}</span>{option.label === 'Cool & Shaded' ? 'Coolest' : option.label}
+                {option.label === 'Cool & Shaded' ? 'Coolest' : option.label}
               </button>
             ))}
           </div>
