@@ -124,7 +124,8 @@ open http://localhost:8000/docs               # Windows: start, Linux: xdg-open
 
 `mobile/` is a native iOS/Android walking app pinned at **Expo SDK 54 / React Native 0.81** — the
 SDK supported by the stock Expo Go client, so **no custom development build is needed**. It uses
-`react-native-maps`, Expo Location, AsyncStorage and Expo vector icons only.
+`react-native-maps`, Expo Location, Expo Haptics, AsyncStorage, `react-native-svg` and Expo vector
+icons only.
 
 ```bash
 # Terminal 1 — the API must bind to 0.0.0.0 so the phone can reach it
@@ -172,9 +173,10 @@ Phone ↔ API behaviour:
    Square → Waterloo Park**, `cool` profile, 7:30 p.m. on 30 Aug — the shaded route costs the **same
    distance** (2 061 m, 25.6 min), adds **+13.8 points of shade**, drops the average surface
    temperature by **0.8 °C**, lifts comfort by **+8.6**, and adds **7.5 min** of effort-weighted
-   time. Numbers move with the time slider, so scrub it and watch them change.
-3. **Scrub the time slider** (5 a.m. → 9 p.m.) and watch building shadows move and the route change
-   with the sun. Toggle *Shadows*, *Heat*, *Canopy*, *Buildings*, *Hazards* and *Road score* layers.
+   time. The map itself always shows *right now*; pass `timestamp` to the API to replay any hour.
+3. **Toggle the overlay layers.** The `Layers` button (top-right of the map) switches *Road
+   conditions*, *Heat zones*, *Tree canopy*, *Building shade*, *Buildings* and *Reported hazards*.
+   Shadows are drawn for the current instant, so re-run step 2 at different times of day.
 4. **Report a hazard** from the bottom-left button. The report penalises a 50 m buffer immediately —
    nearby roads redden and routes around them re-score within the same second, then decay with a
    48 h half-life.
@@ -203,7 +205,7 @@ cd backend && .venv/bin/python -m pytest tests/ -q      # 72 offline API tests
 |---|---|
 | **Satellite ingestion** | Sentinel-2 L2A (B04/B08 → NDVI) + Landsat 8/9 C2 L2 (surface temperature) via the Planetary Computer STAC API |
 | **Austin open data** | City of Austin tree canopy (Socrata `uj6p-2j9z`), UHI disparity layer, sidewalk network — with graceful hydration fallback |
-| **Dynamic shadows** | pysolar/NOAA solar azimuth + elevation → building-height shadow polygons cached per minute; slider scrubs the sun from 5 a.m. to 9 p.m. |
+| **Dynamic shadows** | pysolar/NOAA solar azimuth + elevation → building-height shadow polygons cached per minute; any instant reachable via the API `timestamp` parameter |
 | **Micro-climate weighting** | `W = dist · (1 + α·HeatIndex − β·CanopyNDVI + γ·HazardPenalty + Accessibility)` per edge, per profile |
 | **Crowdsourced hazards** | `POST/GET/DELETE /api/v1/hazards` — reports penalise a 50 m buffer instantly, then decay exponentially (48 h half-life, 7-day expiry) |
 | **3 routing profiles** | Fastest (A*) · Cool & Shaded · Safe & Accessible — every response carries a fastest-path baseline + metric deltas |
@@ -227,7 +229,8 @@ connection.
 
 ```
 ┌─────────────────────────────  Frontend (React + TS + Vite + Tailwind)  ─────────────────────────┐
-│  MapView (MapLibre GL)   RoutingPanel   MetricsPanel   HazardDrawer   TimeSlider  StatusBar     │
+│  MapView (MapLibre GL)  ·  DirectionsPanel  ·  RouteSummary  ·  HazardDrawer  ·  inline layers  │
+│                                    + legend, map tools (App.tsx)                                │
 └──────────────────────────────────────────┬──────────────────────────────────────────────────────┘
                                            │ /api/v1  (JSON / GeoJSON)
 ┌──────────────────────────────────────────▼──────────────────────────────────────────────────────┐
@@ -256,8 +259,8 @@ connection.
 | 2 | **OpenStreetMap Overpass** | pedestrian graph, building heights | → snapshot graph |
 | 3 | **Bundled snapshot** (`backend/app/data/snapshot/`) | everything | always available |
 
-The active branch is reported per-layer by `GET /api/v1/satellite/status` and surfaced as chips in
-the UI (`Refresh live data` re-runs the hierarchy on demand — a daemon thread also runs it on
+The active branch is reported per-layer by `GET /api/v1/satellite/status`, and `POST
+/api/v1/satellite/refresh` re-runs the hierarchy on demand (a daemon thread also runs it on
 startup). In restricted environments (CI, sandboxes, firewalled networks) outbound geo APIs are
 unreachable, so the app demonstrably runs fully on the snapshot layer; on an open network the live
 sources take over automatically. Set `COOLPATH_OFFLINE_MODE=true` to skip the attempts entirely and
@@ -364,7 +367,7 @@ Every GeoJSON route response carries the sampled per-vertex exposure series plus
 | `ModuleNotFoundError: app` | Run uvicorn **from `backend/`** — `uvicorn app.main:app` resolves the package relative to the cwd. |
 | `Address already in use: 8000` / `5173` | Something owns the port: `lsof -i :8000` (Windows: `netstat -ano \| findstr :8000`), or move it — `uvicorn app.main:app --port 8001` **and** the proxy target in `frontend/vite.config.ts` must change together. |
 | App loads, panels say "fetch failed" / 502 | The API isn't running, or is on a different port than the Vite proxy target. Check `curl -s localhost:8000/api/v1/health`. |
-| Startup log shows `→ snapshot fallback` | Expected on restricted networks: live Sentinel/Landsat/Austin/Overpass endpoints are unreachable and the deterministic snapshot takes over. The app is fully functional; use the `Refresh live data` button to retry. |
+| Startup log shows `→ snapshot fallback` | Expected on restricted networks: live Sentinel/Landsat/Austin/Overpass endpoints are unreachable and the deterministic snapshot takes over. The app is fully functional; `curl -X POST localhost:8000/api/v1/satellite/refresh` retries the hierarchy. |
 | Slow start / long timeout on boot | `COOLPATH_OFFLINE_MODE=true` skips every outbound fetch. |
 | `pip install` fails on `geopandas`/`shapely` | Both need a recent pip and wheels for your platform: `python -m pip install -U pip wheel` first, or use Python 3.11/3.12 on a 64-bit OS. |
 | `npm install` errors about workspaces | Install from the **repository root** (never `cd frontend && npm install`); the root `package.json` declares `frontend` and `mobile` as workspaces. Node must be ≥ 20: `node -v`. |
@@ -392,9 +395,11 @@ Highlights: solar position validated against pysolar/NOAA reference values (≤0
 50 m hazard buffer falloff + 48 h half-life decay, point-condition and search endpoints, and
 end-to-end route/hazard flows. `python -m pytest tests/ -v` lists them individually.
 
-CI lives at [`docs/ci-workflow.yml`](docs/ci-workflow.yml) — move it to
-`.github/workflows/ci.yml` to enable the backend + frontend pipelines (snapshot regeneration
-determinism check, pytest, lint, typecheck, vitest, production build).
+CI is defined in [`docs/ci-workflow.yml`](docs/ci-workflow.yml): the backend job regenerates the
+snapshot (determinism check) and runs pytest offline, the frontend job runs `npm ci`, lint,
+typecheck, production build and both vitest suites. It sits in `docs/` rather than
+`.github/workflows/` only because a repo admin has to perform that move (automation tokens here
+lack the `workflows` permission) — drop the file in as `.github/workflows/ci.yml` to switch it on.
 
 ## Repository layout
 
@@ -415,31 +420,42 @@ determinism check, pytest, lint, typecheck, vitest, production build).
 │   ├── requirements-live.txt  # optional live-satellite extras (rasterio, pystac-client, …)
 │   └── Dockerfile          # python:3.11-slim, installs core + live extras, healthcheck
 ├── package.json            # npm workspace: one `npm install` covers frontend + mobile
-├── frontend/
+├── frontend/               # React 19 + Vite + MapLibre client
 │   ├── src/
-│   │   ├── api/             # api client (client.ts, relative `/api/v1` base)
-│   │   ├── components/      # MapView, RoutingPanel, MetricsPanel, HazardDrawer, TimeSlider,
-│   │   │                    # DirectionsPanel, RouteSummary, LayerToggles, Legend, StatusBar
-│   │   ├── hooks/           # useGeolocation, useHazards, useRoute, useShadows,
-│   │   │                    # useRoadConditions, useSatelliteStatus
-│   │   └── utils/           # formatting, Austin-time helpers (+ vitest tests)
+│   │   ├── main.tsx         # entry: index.css + theme-overrides.css (the design system)
+│   │   ├── App.tsx          # state owner; renders the map, planner, layer menu and legend inline
+│   │   ├── api/client.ts    # typed fetch wrapper, relative `/api/v1` base
+│   │   ├── components/      # MapView, DirectionsPanel, RouteSummary, HazardDrawer
+│   │   │                    # (+ TimeSlider, StatusBar: built but not mounted yet — see below)
+│   │   ├── hooks/           # useGeolocation, useHazards, useRoadConditions, useRoute, useShadows
+│   │   │                    # (+ useSatelliteStatus, backing that unmounted StatusBar)
+│   │   └── utils/           # format.ts + time.ts (Austin-time helpers), each with a vitest file
 │   ├── vite.config.ts       # :5173, host 0.0.0.0, /api → 127.0.0.1:8000 proxy
 │   ├── nginx.conf           # container mode: serves dist/, proxies /api → backend:8000
 │   └── Dockerfile           # node:20 build → nginx:1.27
 ├── mobile/                 # Expo Go app (iOS/Android + web)
 │   ├── App.tsx             # tab bar: Map · Navigate · Report · Profile
 │   ├── src/screens/        # MapScreen, NavigationScreen, ReportScreen, ProfileScreen
-│   │                       # (HomeScreen/RouteScreen/PlacesScreen/SettingsScreen are older
-│   │                       #  alternates kept in-tree; they are not wired into the tab bar)
-│   ├── src/components/     # ScoreDial, NearbyRadar, SunArc, MiniRouteMap, PlacePicker, …
-│   ├── src/                # api.ts, state.tsx, url.ts, score.ts, navigation.ts, places.ts
+│   ├── src/components/     # PlacePicker, WalkingMap (+ .native/.web platform split), CoolPathLogo
+│   ├── src/                # api.ts, state.tsx, config.ts, url.ts, score.ts, navigation.ts,
+│   │                       # places.ts, format.ts, theme.ts, types.ts, ErrorBoundary.tsx
 │   ├── src/__tests__/      # vitest unit tests (28)
 │   ├── scripts/start-expo-go.cjs  # resilient Expo Go launcher (LAN / tunnel / web)
 │   └── app.json            # branding, splash, location permissions
 ├── docker-compose.yml      # frontend + backend + redis (+ optional postgis profile)
 ├── .env.example            # every COOLPATH_* knob, all optional
-└── docs/ci-workflow.yml    # GitHub Actions CI (move to .github/workflows/ to enable)
+└── docs/ci-workflow.yml    # GitHub Actions workflow (see Tests → CI)
 ```
+
+One `.gitignore` at the root covers Python, Node, Expo and editor noise for every workspace. Runtime
+state (`backend/data/`, `dist/`, `node_modules/`, `.venv/`) is ignored and regenerated on demand, so
+`git status` stays clean no matter how often you run the app.
+
+> **Two components sit unmounted.** `TimeSlider` (a 5 a.m.–9 p.m. sun scrubber) and `StatusBar`
+> (per-layer live/snapshot chips plus a refresh button, backed by `useSatelliteStatus`) are complete
+> and type-checked, but `App.tsx` does not render them — it pins shadows to the current instant.
+> Everything they need already exists server-side (`/layers/shadows?timestamp=`,
+> `/satellite/status`, `/satellite/refresh`), so surfacing them is a wiring task, not a new feature.
 
 ## Configuration (env vars, prefix `COOLPATH_`)
 
@@ -470,7 +486,8 @@ for that reason; use `COOLPATH_REDIS_URL`.
 - ORS/Valhalla isochrone overlays ("how far can I walk in the shade?")
 - Tree-planting opportunity scorer (high LST × low NDVI × high pedestrian demand)
 - Passive crowdsourcing from fitness-app traces
-- CI enabled in-repo (`.github/workflows/`) + published demo deployment
+- Move `docs/ci-workflow.yml` → `.github/workflows/ci.yml` to switch CI on, then publish a demo
+  deployment so people can try the app without installing anything
 
 ---
 
