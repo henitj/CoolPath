@@ -46,7 +46,7 @@ export function Chip({
         filled ? { backgroundColor: color, borderColor: color } : { borderColor: C.line },
       ]}
     >
-      <Text style={[styles.chipText, filled ? { color: C.bgDeep } : { color }]} numberOfLines={1}>
+      <Text style={[styles.chipText, filled ? { color: '#FFFFFF' } : { color }]} numberOfLines={1}>
         {label}
       </Text>
     </View>

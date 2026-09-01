@@ -2,7 +2,6 @@ import React from 'react'
 import { StyleSheet, Text, View } from 'react-native'
 import { C, R } from '../theme'
 import { formatDistance, haversineM } from '../format'
-import { kindMeta } from '../places'
 import type { Place } from '../types'
 
 export default function PlaceRow({
@@ -24,7 +23,6 @@ export default function PlaceRow({
   saved?: boolean
   onPress?: () => void
 }) {
-  const meta = kindMeta(place.kind)
   const dist =
     origin != null
       ? formatDistance(haversineM(origin.lat, origin.lon, place.lat, place.lon))
@@ -34,13 +32,12 @@ export default function PlaceRow({
 
   return (
     <View style={styles.row}>
-      <Text style={styles.emoji}>{meta.emoji}</Text>
       <View style={{ flex: 1 }}>
         <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
           <Text style={styles.name} numberOfLines={1}>
             {place.name}
           </Text>
-          {saved && <Text style={{ fontSize: 11 }}>💚</Text>}
+          {saved && <Text style={styles.savedLabel}>Saved</Text>}
         </View>
         <Text style={styles.blurb} numberOfLines={1}>
           {place.blurb}
@@ -75,8 +72,8 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 14,
   },
-  emoji: { fontSize: 22 },
   name: { color: C.ink, fontSize: 14.5, fontWeight: '700', flexShrink: 1 },
+  savedLabel: { color: C.mintDeep, fontSize: 10, fontWeight: '800' },
   blurb: { color: C.inkFaint, fontSize: 12, marginTop: 1 },
   scoreBox: { alignItems: 'flex-end', minWidth: 52 },
   score: { fontSize: 19, fontWeight: '800' },

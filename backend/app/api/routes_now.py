@@ -10,8 +10,8 @@ from shapely.geometry import Point
 
 from app.core.geo_utils import in_bbox, point_distance_bbox_norm
 from app.services.conditions import (
-    comfort_score,
     combine_shade,
+    comfort_score,
     sample_points_around,
 )
 

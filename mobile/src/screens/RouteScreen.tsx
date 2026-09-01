@@ -33,9 +33,9 @@ import { C, R } from '../theme'
 type Stop = { label: string; lat: number; lon: number } | null
 
 const PROFILE_OPTS: { value: ProfileId; label: string; sub: string }[] = [
-  { value: 'cool', label: '🌳 Coolest', sub: 'shade first' },
-  { value: 'safe', label: '🛡️ Easiest', sub: 'safe & smooth' },
-  { value: 'fastest', label: '⚡ Shortest', sub: 'no weighting' },
+  { value: 'cool', label: 'Coolest', sub: 'shade first' },
+  { value: 'safe', label: 'Easiest', sub: 'safe & smooth' },
+  { value: 'fastest', label: 'Shortest', sub: 'no weighting' },
 ]
 
 export default function RouteScreen({ initialTab }: { initialTab?: 'origin' | 'destination' | null }) {
@@ -128,7 +128,6 @@ export default function RouteScreen({ initialTab }: { initialTab?: 'origin' | 'd
     >
       <Card style={styles.stopsCard}>
         <StopRow
-          icon="🔵"
           label="From"
           stop={origin}
           onPress={() => setPickerFor('origin')}
@@ -136,7 +135,6 @@ export default function RouteScreen({ initialTab }: { initialTab?: 'origin' | 'd
         />
         <View style={styles.dash} />
         <StopRow
-          icon="🔴"
           label="To"
           stop={destination}
           onPress={() => setPickerFor('destination')}
@@ -176,7 +174,7 @@ export default function RouteScreen({ initialTab }: { initialTab?: 'origin' | 'd
 
       {results.length > 0 && !searching && (
         <>
-          <SectionTitle right={<Text style={styles.hazardCount}>{nearbyHazardsNearRoute > 0 ? `⚠️ ${nearbyHazardsNearRoute} on best path` : '✓ clear'}</Text>}>
+          <SectionTitle right={<Text style={styles.hazardCount}>{nearbyHazardsNearRoute > 0 ? `${nearbyHazardsNearRoute} on best path` : 'Clear path'}</Text>}>
             Path scores
           </SectionTitle>
           <Card style={styles.mapCard}>
@@ -210,7 +208,7 @@ export default function RouteScreen({ initialTab }: { initialTab?: 'origin' | 'd
         <View style={styles.modalWrap}>
           <View style={styles.modalHeader}>
             <TouchableOpacity onPress={() => setPickerFor(null)} hitSlop={10}>
-              <Text style={styles.modalClose}>✕</Text>
+              <Text style={styles.modalClose}>×</Text>
             </TouchableOpacity>
             <Text style={styles.modalTitle}>Choose {pickerFor ?? ''}</Text>
             <View style={{ width: 24 }} />
@@ -237,7 +235,7 @@ export default function RouteScreen({ initialTab }: { initialTab?: 'origin' | 'd
               })
             }}
           >
-            <Text style={styles.useMyLocationText}>📍 Use my location</Text>
+            <Text style={styles.useMyLocationText}>Use my location</Text>
           </Pressable>
           <ScrollView contentContainerStyle={{ padding: 16, gap: 10, paddingBottom: 40 }}>
             {filtered.map((p) => (
@@ -254,14 +252,12 @@ export default function RouteScreen({ initialTab }: { initialTab?: 'origin' | 'd
 }
 
 function StopRow({
-  icon,
   label,
   stop,
   onPress,
   accent,
   placeholder,
 }: {
-  icon: string
   label: string
   stop: Stop
   onPress: () => void
@@ -270,9 +266,7 @@ function StopRow({
 }) {
   return (
     <TouchableOpacity style={styles.stopRow} onPress={onPress} activeOpacity={0.8}>
-      <View style={[styles.stopDot, { backgroundColor: accent }]}>
-        <Text style={{ fontSize: 11 }}>{icon}</Text>
-      </View>
+      <View style={[styles.stopDot, { backgroundColor: accent }]} />
       <View style={{ flex: 1 }}>
         <Text style={styles.stopLabel}>{label}</Text>
         <Text style={[styles.stopValue, !stop && { color: C.inkFaint }]} numberOfLines={1}>

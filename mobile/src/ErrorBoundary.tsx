@@ -46,6 +46,6 @@ const styles = StyleSheet.create({
   wrap: { flex: 1, backgroundColor: C.bg, alignItems: 'center', justifyContent: 'center', gap: 14, padding: 32 },
   title: { ...TYPO.h1 },
   body: { ...TYPO.body, textAlign: 'center' },
-  btn: { backgroundColor: C.mint, borderRadius: R.pill, paddingHorizontal: 28, paddingVertical: 13, marginTop: 8 },
-  btnText: { color: C.bgDeep, fontWeight: '800', fontSize: 15 },
+  btn: { backgroundColor: C.mintDeep, borderRadius: R.pill, paddingHorizontal: 28, paddingVertical: 13, marginTop: 8 },
+  btnText: { color: '#FFFFFF', fontWeight: '800', fontSize: 15 },
 })

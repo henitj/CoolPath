@@ -2,10 +2,10 @@
 from __future__ import annotations
 
 import logging
-from datetime import datetime, timezone
-
-from fastapi import APIRouter, HTTPException, Query, Request
+from datetime import datetime
 from zoneinfo import ZoneInfo
+
+from fastapi import APIRouter, HTTPException, Request
 
 from app.core.constants import PROFILES, ROUTE_COLORS
 from app.core.geo_utils import in_bbox, point_distance_bbox_norm
@@ -25,6 +25,7 @@ def _route_feature(result, profile: str) -> dict:
             "label": PROFILES[profile].label,
             "color": ROUTE_COLORS[profile],
             "metrics": result.metrics.as_dict(),
+            "steps": result.steps,
         },
     }
 
@@ -47,7 +48,10 @@ def compute_route(body: RouteRequest, request: Request) -> dict:
     when = body.timestamp.astimezone(tz) if body.timestamp else datetime.now(tz)
 
     try:
-        result = state.engine.route(body.origin, body.destination, body.profile, when)
+        result = state.engine.route(
+            body.origin, body.destination, body.profile, when,
+            avoid_red_paths=body.avoid_red_paths,
+        )
     except NoRouteError as exc:
         raise HTTPException(status_code=404, detail=str(exc)) from exc
 
@@ -62,6 +66,8 @@ def compute_route(body: RouteRequest, request: Request) -> dict:
             "metrics": result.metrics.as_dict(),
             "samples": result.samples,
             "warnings": result.warnings,
+            "steps": result.steps,
+            "routing_preferences": {"avoid_red_paths": body.avoid_red_paths},
         },
         "comparison": None,
         "baseline": None,

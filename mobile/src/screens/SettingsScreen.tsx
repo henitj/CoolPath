@@ -101,7 +101,7 @@ export default function SettingsScreen() {
             <Text style={styles.halfBtnText}>↻ Refresh GPS</Text>
           </Pressable>
           <Pressable style={styles.halfBtn} onPress={useDowntown}>
-            <Text style={styles.halfBtnText}>📌 Anchor downtown</Text>
+            <Text style={styles.halfBtnText}>Anchor downtown</Text>
           </Pressable>
         </View>
       </Card>
@@ -144,7 +144,7 @@ export default function SettingsScreen() {
 
       <SectionTitle>About</SectionTitle>
       <Card style={{ gap: 8 }}>
-        <Text style={styles.aboutTitle}>CoolPath 2.0 🌿</Text>
+        <Text style={styles.aboutTitle}>CoolPath 2.0</Text>
         <Text style={styles.aboutText}>
           Micro-climate walking companion for Downtown Austin. Surface heat from Landsat,
           greenery from Sentinel-2, building shadows from the real sun position, and hazards from

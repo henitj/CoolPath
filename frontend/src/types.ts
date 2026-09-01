@@ -25,6 +25,25 @@ export interface Comparison {
   effort_delta_min: number
 }
 
+export type RouteManeuver =
+  | 'depart'
+  | 'straight'
+  | 'slight-left'
+  | 'slight-right'
+  | 'turn-left'
+  | 'turn-right'
+  | 'u-turn'
+  | 'arrive'
+
+export interface RouteStep {
+  instruction: string
+  street: string
+  maneuver: RouteManeuver
+  distance_m: number
+  duration_min: number
+  coordinate_index: number
+}
+
 export interface RouteFeature {
   type: 'Feature'
   geometry: { type: 'LineString'; coordinates: [number, number][] }
@@ -36,6 +55,8 @@ export interface RouteFeature {
     timestamp?: string
     samples?: { temp_c: number[]; ndvi: number[]; shade: number[] }
     warnings?: string[]
+    steps?: RouteStep[]
+    routing_preferences?: { avoid_red_paths: boolean }
   }
 }
 
@@ -103,9 +124,9 @@ export interface LayerProps {
   warmth: number
 }
 
-export interface FeatureCollection {
+export interface FeatureCollection<TFeature = Record<string, unknown>> {
   type: 'FeatureCollection'
-  features: Record<string, unknown>[]
+  features: TFeature[]
   properties?: Record<string, unknown>
   bbox?: number[]
 }
@@ -130,4 +151,57 @@ export interface ProfileMeta {
   alpha: number
   beta: number
   gamma: number
+}
+
+export interface Place {
+  id: string
+  name: string
+  lon: number
+  lat: number
+  kind: string
+  blurb: string
+}
+
+/** A place after it has been selected as a route start, end, or map pin. */
+export interface MapLocation {
+  id: string
+  name: string
+  coordinates: [number, number]
+  detail?: string
+  source: 'search' | 'coordinates' | 'map' | 'location'
+}
+
+export interface PlaceSearchResponse {
+  places: Place[]
+  source: string
+}
+
+export interface RoadConditionProperties {
+  name: string
+  quality: number
+  status: 'Excellent' | 'Good' | 'Use care' | 'Poor'
+  color: string
+  temp_c: number
+  shade_pct: number
+  shadow_pct: number
+  hazard_penalty: number
+  sidewalk: boolean
+  lit: boolean
+}
+
+export interface RoadConditionFeature {
+  type: 'Feature'
+  geometry: { type: 'LineString'; coordinates: [number, number][] }
+  properties: RoadConditionProperties
+}
+
+export type RoadConditionsResponse = FeatureCollection<RoadConditionFeature>
+
+export interface MetaResponse {
+  name: string
+  tagline: string
+  version: string
+  bbox: [number, number, number, number]
+  center: { lat: number; lon: number }
+  timezone: string
 }

@@ -7,7 +7,6 @@ street trees overhang the sidewalk and curb lane.  An STRtree with
 """
 from __future__ import annotations
 
-import math
 from typing import Sequence
 
 import numpy as np

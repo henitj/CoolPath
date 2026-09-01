@@ -10,13 +10,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 import numpy as np
-from shapely.geometry import Polygon, mapping
-from shapely.ops import unary_union
-from shapely.prepared import prep
+from shapely.geometry import Polygon
 
 from app.core.cache import Cache
 from app.core.config import Settings
-from app.core.geo_utils import bbox_polygon_geojson
 from app.services import austin_service, satellite_service
 from app.services.environment import EnvironmentGrids
 from app.services.hazard_service import HazardService
@@ -70,6 +67,8 @@ class AppState:
         if self.hazards is not None:
             self.engine.bind_hazard_service(self.hazards)
         self._layers = {}  # invalidate layer caches on network swap
+        self.cache.invalidate_prefix("places:")
+        self.cache.invalidate_prefix("conditions:")
 
     def _build_canopy_index(self):
         from app.services.canopy_index import CanopyIndex

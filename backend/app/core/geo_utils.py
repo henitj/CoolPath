@@ -55,7 +55,6 @@ def line_sample_points(coords: Sequence[LonLat], spacing_m: float) -> list[LonLa
 
 def sample_grid(grid, bbox: Sequence[float], lon: float, lat: float) -> float:
     """Bilinear sample of a 2-D ndarray spanning ``bbox`` (row 0 = north)."""
-    import numpy as np
 
     min_lon, min_lat, max_lon, max_lat = bbox
     h, w = grid.shape

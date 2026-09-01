@@ -99,7 +99,6 @@ export default function ScoreDial({
         </View>
       </View>
       <View style={styles.verdictRow}>
-        <Text style={{ fontSize: 18 }}>{verdict.emoji}</Text>
         <Text style={[styles.verdictText, { color: verdict.color }]}>{verdict.label}</Text>
         <Text style={styles.tempText}>{tempLabel}</Text>
       </View>

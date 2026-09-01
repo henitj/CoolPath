@@ -1,111 +1,71 @@
 /**
- * CoolPath — calm micro-climate walking companion.
- *
- * Tab shell: Home (now) · Route (compare) · Places · Report · Settings.
- * The logo in the header mirrors app state: it breathes with live data,
- * spins while scoring routes, and celebrates a planted report.
+ * CoolPath mobile: an Expo Go-compatible, map-first walking companion.
+ * The map is the home screen; routes, navigation, reports, and profile all
+ * share the same persisted GPS and routing state.
  */
-import React, { useEffect, useState } from 'react'
-import { StatusBar as ExpoStatusBar, StyleSheet, Text, TouchableOpacity, View } from 'react-native'
+import React, { useCallback, useEffect, useState } from 'react'
+import { StatusBar as ExpoStatusBar } from 'expo-status-bar'
+import { Pressable, StyleSheet, Text, View } from 'react-native'
+import { MaterialIcons } from '@expo/vector-icons'
 import { SafeAreaProvider, SafeAreaView } from 'react-native-safe-area-context'
 import { AppProvider, useApp } from './src/state'
-import { BusyProvider, useBusy } from './src/busy'
-import { ToastProvider, useToast } from './src/toast'
 import { ErrorBoundary } from './src/ErrorBoundary'
-import CoolPathLogo, { LogoHalo } from './src/components/CoolPathLogo'
-import HomeScreen from './src/screens/HomeScreen'
-import RouteScreen from './src/screens/RouteScreen'
-import PlacesScreen from './src/screens/PlacesScreen'
+import MapScreen, { type RoutePlan } from './src/screens/MapScreen'
+import NavigationScreen from './src/screens/NavigationScreen'
+import ProfileScreen from './src/screens/ProfileScreen'
 import ReportScreen from './src/screens/ReportScreen'
-import SettingsScreen from './src/screens/SettingsScreen'
-import type { Place } from './src/types'
-import { C, R } from './src/theme'
+import { C, R, SHADOW } from './src/theme'
 
-type TabId = 'home' | 'route' | 'places' | 'report' | 'settings'
+type TabId = 'map' | 'navigate' | 'report' | 'profile'
 
-const TABS: { id: TabId; label: string }[] = [
-  { id: 'home', label: 'Now' },
-  { id: 'route', label: 'Route' },
-  { id: 'places', label: 'Places' },
-  { id: 'report', label: 'Report' },
-  { id: 'settings', label: 'You' },
+const TABS: { id: TabId; label: string; icon: keyof typeof MaterialIcons.glyphMap }[] = [
+  { id: 'map', label: 'Map', icon: 'map' },
+  { id: 'navigate', label: 'Navigate', icon: 'navigation' },
+  { id: 'report', label: 'Report', icon: 'report-problem' },
+  { id: 'profile', label: 'Profile', icon: 'account-circle' },
 ]
 
-const TAB_ICONS: Record<TabId, string> = {
-  home: '🌿',
-  route: '🧭',
-  places: '📍',
-  report: '✋',
-  settings: '⚙️',
-}
-
-function HeaderLogo() {
-  const { apiState } = useApp()
-  const { busy } = useBusy()
-  const mood = busy ? 'busy' : apiState === 'ok' ? 'calm' : 'error'
-  return <CoolPathLogo size={34} mood={mood} pulse={apiState === 'ok' && !busy} />
-}
-
-function Header() {
-  const { apiState, locationStatus } = useApp()
-  const statusText =
-    apiState === 'connecting' ? 'Connecting…' : apiState === 'ok' ? (locationStatus === 'live' ? 'Live' : 'On the map') : 'Offline mode'
-  const statusColor = apiState === 'ok' ? (locationStatus === 'live' ? '#A7F3A0' : '#FCD34D') : '#FB8A80'
-  return (
-    <View style={styles.header}>
-      <HeaderLogo />
-      <View style={{ flex: 1 }}>
-        <Text style={styles.headerTitle}>
-          Cool<Text style={{ color: C.mint }}>Path</Text>
-        </Text>
-        <View style={styles.statusRow}>
-          <View style={[styles.statusDot, { backgroundColor: statusColor }]} />
-          <Text style={styles.statusText}>{statusText} · downtown Austin</Text>
-        </View>
-      </View>
-    </View>
-  )
-}
-
 function Shell() {
-  const [tab, setTab] = useState<TabId>('home')
-  const [pendingDest, setPendingDest] = useState<Place | null>(null)
-  const toast = useToast()
-  const { coords } = useApp()
+  const [tab, setTab] = useState<TabId>('map')
+  const [plan, setPlan] = useState<RoutePlan | null>(null)
+  const { startWalk } = useApp()
 
-  const pickDestination = (p: Place) => {
-    setPendingDest(p)
-    setTab('route')
-    toast(`${p.name} set as destination`, 'good')
-  }
+  const startNavigation = useCallback(async (routePlan: RoutePlan) => {
+    const started = await startWalk(routePlan.destination.name)
+    if (started) {
+      setPlan(routePlan)
+      setTab('navigate')
+    }
+    return started
+  }, [startWalk])
+
+  const leaveNavigation = useCallback(() => setTab('map'), [])
 
   return (
-    <SafeAreaView style={styles.safe} edges={['top']}>
-      <Header />
+    <SafeAreaView style={styles.safe} edges={[]}>
       <View style={styles.body}>
-        {tab === 'home' && <HomeScreen onGoRouting={() => setTab('route')} />}
-        {tab === 'route' && <RouteScreen key={pendingDest ? `d-${pendingDest.id}-${coords.lat.toFixed(4)}` : 'route'} initialTab={pendingDest ? 'destination' : null} />}
-        {tab === 'places' && <PlacesScreen onPickDestination={pickDestination} />}
+        {tab === 'map' && <MapScreen plan={plan} onPlanChange={setPlan} onStartNavigation={startNavigation} onOpenReport={() => setTab('report')} />}
+        {tab === 'navigate' && <NavigationScreen plan={plan} onPlanChange={setPlan} onExitNavigation={leaveNavigation} />}
         {tab === 'report' && <ReportScreen />}
-        {tab === 'settings' && <SettingsScreen />}
+        {tab === 'profile' && <ProfileScreen />}
       </View>
       <SafeAreaView edges={['bottom']} style={styles.tabSafe}>
         <View style={styles.tabBar}>
-          {TABS.map((t) => {
-            const active = tab === t.id
+          {TABS.map((item) => {
+            const active = tab === item.id
             return (
-              <TouchableOpacity
-                key={t.id}
+              <Pressable
+                key={item.id}
                 style={styles.tab}
-                onPress={() => setTab(t.id)}
+                onPress={() => setTab(item.id)}
                 accessibilityRole="tab"
                 accessibilityState={{ selected: active }}
               >
-                <LogoHalo active={active}>
-                  <Text style={[styles.tabIcon, !active && { opacity: 0.55 }]}>{TAB_ICONS[t.id]}</Text>
-                </LogoHalo>
-                <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{t.label}</Text>
-              </TouchableOpacity>
+                <View style={[styles.tabIconWrap, active && styles.tabIconWrapActive]}>
+                  <MaterialIcons name={item.icon} size={21} color={active ? C.mintDark : C.inkFaint} />
+                </View>
+                <Text style={[styles.tabLabel, active && styles.tabLabelActive]}>{item.label}</Text>
+              </Pressable>
             )
           })}
         </View>
@@ -116,12 +76,12 @@ function Shell() {
 
 export default function App() {
   useEffect(() => {
-    // Never let a stray async error take the app down.
+    // Keep recoverable asynchronous errors visible in Metro logs without
+    // replacing a usable map session with an opaque red screen.
     const defaultHandler = ErrorUtils?.getGlobalHandler?.()
-    ErrorUtils?.setGlobalHandler?.((err, isFatal) => {
-      console.warn('CoolPath global error:', err)
-      if (!isFatal) return
-      if (typeof defaultHandler === 'function') defaultHandler(err, isFatal)
+    ErrorUtils?.setGlobalHandler?.((error, isFatal) => {
+      console.warn('CoolPath global error:', error)
+      if (isFatal && typeof defaultHandler === 'function') defaultHandler(error, isFatal)
     })
   }, [])
 
@@ -129,12 +89,8 @@ export default function App() {
     <ErrorBoundary>
       <SafeAreaProvider>
         <AppProvider>
-          <BusyProvider>
-            <ToastProvider>
-              <ExpoStatusBar barStyle="light-content" backgroundColor={C.bg} />
-              <Shell />
-            </ToastProvider>
-          </BusyProvider>
+          <ExpoStatusBar style="dark" translucent backgroundColor="transparent" />
+          <Shell />
         </AppProvider>
       </SafeAreaProvider>
     </ErrorBoundary>
@@ -143,32 +99,22 @@ export default function App() {
 
 const styles = StyleSheet.create({
   safe: { flex: 1, backgroundColor: C.bg },
-  header: {
+  body: { flex: 1, backgroundColor: C.bg },
+  tabSafe: { backgroundColor: C.surface },
+  tabBar: {
+    minHeight: 68,
     flexDirection: 'row',
     alignItems: 'center',
-    gap: 11,
-    paddingHorizontal: 18,
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: C.lineSoft,
-    backgroundColor: C.bg,
-  },
-  headerTitle: { color: C.ink, fontSize: 21, fontWeight: '900', letterSpacing: 0.2 },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 1 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  statusText: { color: C.inkFaint, fontSize: 11, fontWeight: '600' },
-  body: { flex: 1, backgroundColor: C.bg },
-  tabSafe: { backgroundColor: C.bg },
-  tabBar: {
-    flexDirection: 'row',
     borderTopWidth: 1,
     borderTopColor: C.lineSoft,
-    backgroundColor: C.bg,
-    paddingTop: 8,
+    backgroundColor: C.surface,
+    paddingTop: 7,
     paddingBottom: 6,
+    ...SHADOW.card,
   },
-  tab: { flex: 1, alignItems: 'center', gap: 3 },
-  tabIcon: { fontSize: 19 },
+  tab: { flex: 1, alignItems: 'center', gap: 3, minHeight: 53, justifyContent: 'center' },
+  tabIconWrap: { width: 42, height: 30, alignItems: 'center', justifyContent: 'center', borderRadius: R.pill },
+  tabIconWrapActive: { backgroundColor: C.mintSoft },
   tabLabel: { color: C.inkFaint, fontSize: 10.5, fontWeight: '700' },
-  tabLabelActive: { color: C.mint },
+  tabLabelActive: { color: C.mintDark, fontWeight: '800' },
 })

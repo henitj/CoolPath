@@ -69,7 +69,6 @@ def fetch_ndvi_sentinel2(settings: Settings, size: int = 128) -> tuple[np.ndarra
     try:
         import planetary_computer as pc
         import rasterio
-        from rasterio.vrt import WarpedVRT
         from pystac_client import Client
     except ImportError as exc:  # pragma: no cover
         raise LiveFetchError(f"satellite deps missing: {exc}") from exc
@@ -128,8 +127,8 @@ def fetch_lst_landsat(settings: Settings, size: int = 128) -> tuple[np.ndarray, 
 
 
 def _read_bbox_band(href: str, bbox: Sequence[float], size: int, rasterio) -> np.ndarray:
-    from rasterio.vrt import WarpedVRT
     from rasterio.enums import Resampling
+    from rasterio.vrt import WarpedVRT
 
     with rasterio.open(href) as src:
         with WarpedVRT(src, crs="EPSG:4326",

@@ -1,6 +1,11 @@
 import type {
   FeatureCollection,
   HazardCollection,
+  MetaResponse,
+  Place,
+  PlaceSearchResponse,
+  ProfileId,
+  RoadConditionsResponse,
   RouteResponse,
   SatelliteStatus,
   ShadowResponse,
@@ -18,7 +23,7 @@ export class ApiError extends Error {
 
 async function request<T>(path: string, init?: RequestInit): Promise<T> {
   const resp = await fetch(`${API_BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
+    headers: { Accept: 'application/json', 'Content-Type': 'application/json' },
     ...init,
   })
   if (!resp.ok) {
@@ -27,7 +32,7 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
       const body = await resp.json()
       if (body?.detail) detail = typeof body.detail === 'string' ? body.detail : JSON.stringify(body.detail)
     } catch {
-      /* keep default */
+      // Keep the useful status fallback when an intermediary sends non-JSON.
     }
     throw new ApiError(resp.status, detail)
   }
@@ -37,15 +42,24 @@ async function request<T>(path: string, init?: RequestInit): Promise<T> {
 export interface RoutePayload {
   origin: [number, number]
   destination: [number, number]
-  profile: string
+  profile: ProfileId
   timestamp?: string
+  include_baseline?: boolean
+  avoid_red_paths?: boolean
 }
 
 export const api = {
   health: () => request<{ status: string }>('/health'),
 
+  meta: () => request<MetaResponse>('/meta'),
+
   route: (payload: RoutePayload) =>
     request<RouteResponse>('/route', { method: 'POST', body: JSON.stringify(payload) }),
+
+  places: () => request<{ places: Place[] }>('/places'),
+
+  searchPlaces: (query: string, limit = 8) =>
+    request<PlaceSearchResponse>(`/places/search?${new URLSearchParams({ q: query, limit: String(limit) })}`),
 
   hazards: (bbox?: [number, number, number, number], activeOnly = true) => {
     const params = new URLSearchParams({ active_only: String(activeOnly) })
@@ -70,6 +84,11 @@ export const api = {
 
   layer: (name: 'buildings' | 'canopy' | 'water' | 'parks' | 'heat') =>
     request<FeatureCollection>(`/layers/${name}`),
+
+  roadConditions: (timestamp?: string) =>
+    request<RoadConditionsResponse>(
+      `/layers/road-conditions${timestamp ? `?timestamp=${encodeURIComponent(timestamp)}` : ''}`,
+    ),
 
   shadows: (timestamp?: string) =>
     request<ShadowResponse>(`/layers/shadows${timestamp ? `?timestamp=${encodeURIComponent(timestamp)}` : ''}`),

@@ -1,0 +1,343 @@
+/*
+ * Modern daylight skin
+ *
+ * A restrained, high-contrast treatment shared by map controls, route cards,
+ * and the report flow. The real map remains the visual focus; controls use
+ * warm white surfaces, generous radii, and one evergreen action colour.
+ */
+:root {
+  color: #15251a;
+  background: #f6f8f4;
+}
+
+.map-app {
+  background: #f6f8f4;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 3px solid rgba(43, 154, 97, 0.32);
+  outline-offset: 2px;
+}
+
+.directions-card {
+  top: 20px;
+  left: 20px;
+  border-color: rgba(213, 225, 215, 0.96);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.97);
+  box-shadow: 0 14px 40px rgba(24, 50, 34, 0.15);
+}
+
+.directions-heading {
+  padding: 15px 16px 12px;
+}
+
+.brand-mark {
+  width: 36px;
+  height: 36px;
+  border-radius: 12px;
+  background: linear-gradient(145deg, #146b43, #3aa76b);
+  box-shadow: 0 5px 12px rgba(20, 107, 67, 0.2);
+}
+
+.directions-heading h1,
+.hazard-drawer h2 {
+  color: #15251a;
+  font-size: 17px;
+}
+
+.directions-heading p,
+.hazard-drawer-header p {
+  color: #6b7d70;
+}
+
+.icon-button:hover {
+  background: #eff7f1;
+  color: #0d4d30;
+}
+
+.stops-shell {
+  margin: 0 14px;
+  border-color: #dbe7de;
+  border-radius: 15px;
+  background: #fbfdfc;
+}
+
+.stop-row {
+  min-height: 54px;
+}
+
+.stop-row + .stop-row {
+  border-color: #e8efea;
+}
+
+.stops-line {
+  border-color: #b9cbbd;
+}
+
+.stop-dot.origin,
+.map-marker-origin,
+.map-marker-user {
+  background: #2f7fe7;
+}
+
+.stop-dot.destination,
+.map-marker-destination {
+  background: #b93e38;
+}
+
+.place-input {
+  color: #15251a;
+}
+
+.place-input::placeholder {
+  color: #7a887f;
+}
+
+.place-input.is-active,
+.map-pick-button:hover,
+.map-pick-button.is-active {
+  color: #146b43;
+}
+
+.map-pick-button:hover,
+.map-pick-button.is-active {
+  background: #e4f3e8;
+}
+
+.swap-button {
+  width: 34px;
+  height: 34px;
+  border-color: #d7e3da;
+  box-shadow: 0 4px 10px rgba(24, 50, 34, 0.12);
+  color: #365b45;
+}
+
+.swap-button:hover {
+  border-color: #a9d0b4;
+  background: #eff8f1;
+  color: #0d4d30;
+}
+
+.suggestions {
+  margin: 8px 14px 0;
+  border-color: #dce8df;
+  border-radius: 15px;
+  box-shadow: 0 12px 26px rgba(24, 50, 34, 0.14);
+}
+
+.suggestion:hover {
+  background: #f1f8f2;
+}
+
+.suggestion.current-location {
+  background: #edf5ff;
+}
+
+.suggestion-icon {
+  width: 28px;
+  height: 28px;
+  background: #e2f2e6;
+  color: #146b43;
+}
+
+.route-options {
+  padding: 14px 15px 12px;
+}
+
+.profile-pill {
+  padding: 7px 10px;
+  border-color: #dce7df;
+  background: #fbfdfc;
+  color: #526258;
+}
+
+.profile-pill:hover {
+  border-color: #a7cfb3;
+  background: #eff8f1;
+}
+
+.profile-pill.is-selected {
+  border-color: #7fbf93;
+  background: #e0f3e6;
+  color: #0d4d30;
+}
+
+.find-route-button,
+.submit-hazard-button {
+  min-height: 46px;
+  margin-bottom: 15px;
+  border-radius: 14px;
+  background: #146b43;
+  box-shadow: 0 6px 13px rgba(20, 107, 67, 0.2);
+}
+
+.find-route-button:hover:not(:disabled),
+.submit-hazard-button:hover:not(:disabled) {
+  background: #0d4d30;
+}
+
+.map-status,
+.map-tool-button,
+.condition-legend,
+.map-tip,
+.route-summary {
+  border-color: rgba(213, 225, 215, 0.95);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 8px 24px rgba(24, 50, 34, 0.13);
+}
+
+.map-status {
+  top: 20px;
+  right: 20px;
+  padding: 9px 12px;
+  color: #526258;
+}
+
+.status-dot.ready {
+  background: #237f4d;
+  box-shadow: 0 0 0 4px rgba(35, 127, 77, 0.13);
+}
+
+.map-notice {
+  border-color: #f0d5a1;
+  border-radius: 14px;
+  background: rgba(255, 248, 231, 0.98);
+  box-shadow: 0 8px 20px rgba(92, 67, 19, 0.12);
+  color: #76520d;
+}
+
+.map-tools {
+  right: 20px;
+  bottom: 22px;
+}
+
+.map-tool-button {
+  min-width: 44px;
+  min-height: 44px;
+  border-radius: 14px;
+  color: #263d2e;
+}
+
+.map-tool-button:hover {
+  background: #eff8f1;
+  color: #0d4d30;
+}
+
+.layers-menu {
+  border-color: #d8e4db;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 12px 26px rgba(24, 50, 34, 0.17);
+}
+
+.layers-menu input {
+  accent-color: #146b43;
+}
+
+.condition-legend {
+  right: 190px;
+  bottom: 22px;
+  border-radius: 16px;
+}
+
+.legend-title {
+  color: #263d2e;
+}
+
+.map-tip,
+.route-summary {
+  bottom: 22px;
+  border-radius: 18px;
+}
+
+.route-profile-dot {
+  background: #146b43;
+}
+
+.route-main-metrics > div {
+  border-color: #e8efea;
+}
+
+.route-main-metrics strong,
+.route-main-metrics .comfort-metric strong,
+.route-summary-topline,
+.map-tip b {
+  color: #15251a;
+}
+
+.route-benefit,
+.clear-detail {
+  color: #146b43;
+}
+
+.hazard-fab {
+  bottom: 22px;
+  left: 20px;
+  min-height: 46px;
+  background: #b93e38;
+  box-shadow: 0 8px 18px rgba(132, 49, 43, 0.24);
+}
+
+.hazard-fab:hover {
+  background: #95332f;
+}
+
+.hazard-drawer {
+  border-color: #d8e4db;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.98);
+  box-shadow: 0 14px 34px rgba(24, 50, 34, 0.2);
+}
+
+.hazard-category {
+  min-height: 38px;
+  border-color: #dce7df;
+  border-radius: 10px;
+  color: #40574a;
+}
+
+.hazard-category:hover {
+  background: #fff8e9;
+}
+
+.hazard-category.is-selected {
+  border-color: #e6b75f;
+  background: #fff3d8;
+  color: #84500b;
+}
+
+.hazard-drawer textarea:focus {
+  border-color: #72b98a;
+  box-shadow: 0 0 0 3px rgba(43, 154, 97, 0.13);
+}
+
+@media (max-width: 760px) {
+  .directions-card {
+    top: 10px;
+    left: 12px;
+    border-radius: 18px;
+  }
+
+  .map-tools {
+    right: 12px;
+    bottom: 16px;
+  }
+
+  .condition-legend {
+    right: 66px;
+    bottom: 16px;
+  }
+
+  .map-tip,
+  .route-summary {
+    bottom: 16px;
+  }
+
+  .hazard-fab {
+    bottom: 16px;
+    left: 12px;
+  }
+}

@@ -21,6 +21,9 @@
     "mobile": "npm run start --workspace mobile",
     "mobile:web": "npm run web --workspace mobile",
     "mobile:android": "npm run android --workspace mobile",
-    "mobile:ios": "npm run ios --workspace mobile"
+    "mobile:ios": "npm run ios --workspace mobile",
+    "mobile:lan": "npm run start:lan --workspace mobile",
+    "mobile:tunnel": "npm run start:tunnel --workspace mobile",
+    "mobile:doctor": "npm run doctor --workspace mobile"
   }
 }
