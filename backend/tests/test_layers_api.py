@@ -53,6 +53,26 @@ def test_shadows_layer(client):
     assert client.get("/api/v1/layers/shadows").status_code == 200
 
 
+def test_road_conditions_layer_updates_for_hazards(client):
+    baseline = client.get("/api/v1/layers/road-conditions")
+    assert baseline.status_code == 200
+    data = baseline.json()
+    assert data["type"] == "FeatureCollection"
+    assert len(data["features"]) >= 500
+    assert "green is cooler and safer" in data["properties"]["description"]
+    props = data["features"][0]["properties"]
+    assert 0 <= props["quality"] <= 100
+    assert props["status"] in {"Excellent", "Good", "Use care", "Poor"}
+    assert props["color"].startswith("#")
+
+    reported = client.post("/api/v1/hazards", json={
+        "category": "blocked_path", "lat": 30.2674, "lon": -97.7430, "severity": 5,
+    })
+    assert reported.status_code == 201
+    refreshed = client.get("/api/v1/layers/road-conditions").json()
+    assert any(feature["properties"]["hazard_penalty"] > 0 for feature in refreshed["features"])
+
+
 def test_network_stats(client):
     stats = client.get("/api/v1/layers/network/stats").json()
     assert stats["nodes"] >= 300

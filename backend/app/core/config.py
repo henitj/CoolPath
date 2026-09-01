@@ -53,6 +53,11 @@ class Settings(BaseSettings):
     # Optional ArcGIS REST endpoint for the Summer 2024 Urban Heat Island
     # disparity layer (left blank -> snapshot layer is used).
     austin_uhi_url: str = ""
+    # Keyless address fallback for place searches. Local curated places and
+    # graph intersections always answer first; this only runs when no local
+    # match is found and is skipped entirely in offline mode.
+    geocoder_url: str = "https://nominatim.openstreetmap.org/search"
+    geocoder_timeout_s: float = 2.5
 
     cors_origins: str = "*"
 

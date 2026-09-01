@@ -37,6 +37,22 @@ def test_now_outside_bbox(client):
     assert bad_ts.status_code == 422
 
 
+def test_place_search_resolves_landmarks_intersections_and_coordinates(client):
+    landmark = client.get("/api/v1/places/search", params={"q": "capitol"})
+    assert landmark.status_code == 200
+    assert any("Capitol" in place["name"] for place in landmark.json()["places"])
+
+    intersection = client.get("/api/v1/places/search", params={"q": "congress 6th"}).json()["places"]
+    assert any("6th St & Congress" in place["name"] or "Congress Ave & 6th" in place["name"] for place in intersection)
+    # Search must not confuse a 6th Street query with the 16th Street block.
+    assert not intersection[0]["name"].startswith("16th St")
+
+    coordinates = client.get("/api/v1/places/search", params={"q": "-97.7425, 30.2674"}).json()["places"]
+    assert coordinates[0]["id"].startswith("coordinates-")
+    assert coordinates[0]["lon"] == -97.7425
+    assert coordinates[0]["lat"] == 30.2674
+
+
 def test_places_listing(client):
     resp = client.get("/api/v1/places")
     assert resp.status_code == 200

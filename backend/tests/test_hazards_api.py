@@ -79,3 +79,6 @@ def test_hazard_immediately_penalises_route(client):
     # nearby, higher effort) - in both cases weighted cost can only increase.
     assert m_after["effort_min"] >= m_before["effort_min"] - 0.05
     assert m_after["hazard_count"] >= 1 or m_after["distance_m"] >= m_before["distance_m"] + 40
+    # This is the important behavioural guarantee: reports participate in
+    # A* edge weights, rather than only being mentioned after a route is made.
+    assert after["geometry"]["coordinates"] != before["geometry"]["coordinates"]

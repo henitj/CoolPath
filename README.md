@@ -22,7 +22,7 @@ Bounding box (EPSG:4326): `[-97.755, 30.260, -97.730, 30.278]` · Center: `30.26
 | 🧮 **Micro-climate weighting** | `W = dist · (1 + α·HeatIndex − β·CanopyNDVI + γ·HazardPenalty + Accessibility)` per edge, per profile |
 | ⚠️ **Crowdsourced hazards** | `POST/GET/DELETE /api/v1/hazards` — reports penalise a 50 m buffer instantly, then decay exponentially (48 h half-life, 7-day expiry) |
 | 🗺️ **3 routing profiles** | Fastest (A*) · Cool & Shaded · Safe & Accessible — every response carries a fastest-path baseline + metric deltas |
-| 🖥️ **Dual-layer map UI** | MapLibre GL: heat grid, canopy, buildings, live shadow overlay, hazard pins, route comparison panel, hazard reporting drawer |
+| 🖥️ **Map-first directions UI** | Google Maps-style MapLibre screen: type/search a start and destination (or use device GPS / map pins), get an automatic route, see live green→red road conditions, and report hazards from the bottom-left button |
 
 ## 🚀 Quickstart
 
@@ -208,6 +208,12 @@ curl -s "localhost:8000/api/v1/hazards?bbox=-97.755,30.260,-97.730,30.278"
 # Building shadows at a specific instant (solar alt/az included)
 curl -s "localhost:8000/api/v1/layers/shadows?timestamp=2026-08-30T14:00:00-05:00"
 
+# Live road quality (0–100; green = cooler/safer, red = use care)
+curl -s localhost:8000/api/v1/layers/road-conditions | jq '.features[0].properties'
+
+# Offline-ready place and intersection search (also accepts lat,lon)
+curl -s 'localhost:8000/api/v1/places/search?q=Congress%206th' | jq '.places[:3]'
+
 # Map layers + network stats + ingestion status
 curl -s localhost:8000/api/v1/layers/heat | jq '.properties'
 curl -s localhost:8000/api/v1/layers/network/stats
@@ -226,7 +232,9 @@ Full OpenAPI docs: `http://localhost:8000/docs`.
 | `GET/DELETE` | `/api/v1/hazards/{id}` | Fetch / remove a report |
 | `GET` | `/api/v1/hazards/categories` | Hazard taxonomy |
 | `GET` | `/api/v1/layers/{buildings,canopy,water,parks,heat}` | Map layers (GeoJSON) |
+| `GET` | `/api/v1/layers/road-conditions?timestamp=` | Live 0–100 per-road comfort/safety overlay (green → red) |
 | `GET` | `/api/v1/layers/shadows?timestamp=` | Shadow polygons + solar position |
+| `GET` | `/api/v1/places/search?q=` | Offline place, street-intersection, and coordinate search |
 | `GET` | `/api/v1/layers/network/stats` | Graph stats |
 | `GET/POST` | `/api/v1/satellite/status|refresh` | Ingestion hierarchy status / manual refresh |
 | `GET` | `/api/v1/meta`, `/api/v1/health` | Metadata, health |
@@ -234,8 +242,8 @@ Full OpenAPI docs: `http://localhost:8000/docs`.
 ## 🧪 Tests
 
 ```bash
-cd backend && python -m pytest tests/ -q          # 59 tests: solar, shadows, weights,
-                                                  # hazard decay, routing, all REST endpoints
+cd backend && python -m pytest tests/ -q          # solar, shadows, weights, road conditions,
+                                                  # hazard decay, routing, and all REST endpoints
 npm test                                          # from the repo root: frontend + mobile vitest
 npm run typecheck                                 # from the repo root: all workspaces
 ```

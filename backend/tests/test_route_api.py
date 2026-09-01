@@ -43,6 +43,37 @@ def test_fastest_profile_has_no_baseline(client):
     assert data["comparison"] is None
 
 
+def test_route_scores_short_distinct_walks_that_share_one_node(client):
+    # Nearby landmarks can snap to one sparse graph junction. They should get
+    # a useful direct local-walk result rather than a misleading 404.
+    origin = [-97.7470, 30.2650]
+    destination = [-97.7462, 30.2645]
+    resp = client.post("/api/v1/route", json={
+        "origin": origin, "destination": destination, "profile": "cool",
+    })
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["geometry"]["coordinates"] == [origin, destination]
+    assert data["properties"]["metrics"]["distance_m"] > 10
+    assert any("Short local walk" in warning for warning in data["properties"]["warnings"])
+
+
+def test_route_uses_a_shared_component_for_disconnected_snapshot_islands(client):
+    # Lady Bird Lake Trail is a valid curated destination but lives on a small
+    # disconnected snapshot island. A route planner should gracefully snap to
+    # the nearest connected walking network instead of returning a 404.
+    origin = [-97.7369, 30.2747]  # Texas State Capitol
+    destination = [-97.7425, 30.2613]  # Lady Bird Lake Trail @ Congress
+    resp = client.post("/api/v1/route", json={
+        "origin": origin, "destination": destination, "profile": "cool",
+    })
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["geometry"]["coordinates"][0] == origin
+    assert data["geometry"]["coordinates"][-1] == destination
+    assert any("connected pedestrian network" in warning for warning in data["properties"]["warnings"])
+
+
 def test_route_rejects_outside_bbox(client):
     resp = client.post("/api/v1/route", json={"origin": [-97.90, 30.26], "destination": [-97.74, 30.27]})
     assert resp.status_code == 422

@@ -6,6 +6,7 @@ interface LayerTogglesProps {
 }
 
 const LABELS: { key: keyof Toggles; label: string; icon: string }[] = [
+  { key: 'conditions', label: 'Road score', icon: '🛣️' },
   { key: 'heat', label: 'Heat', icon: '🔥' },
   { key: 'canopy', label: 'Canopy', icon: '🌳' },
   { key: 'shadows', label: 'Shadows', icon: '🌓' },

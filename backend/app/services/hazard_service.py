@@ -20,7 +20,7 @@ from sqlalchemy.orm import Session
 from app.core.cache import Cache
 from app.core.config import Settings
 from app.core.constants import HAZARD_CATEGORIES
-from app.core.geo_utils import M_PER_DEG_LAT, haversine_m
+from app.core.geo_utils import M_PER_DEG_LAT
 from app.models.hazard import Hazard
 from app.models.schemas import HazardCreate
 
@@ -50,6 +50,10 @@ class HazardService:
         db.commit()
         db.refresh(hazard)
         self.cache.invalidate_prefix("hazards:")
+        # The map's live road-colour overlay is derived from the same hazard
+        # penalties as routing. Clear it too so a submitted report is visible
+        # (and can influence route choice) on the very next request.
+        self.cache.invalidate_prefix("conditions:")
         return hazard
 
     def get(self, db: Session, hazard_id: int) -> Hazard | None:
@@ -82,6 +86,7 @@ class HazardService:
         db.delete(hazard)
         db.commit()
         self.cache.invalidate_prefix("hazards:")
+        self.cache.invalidate_prefix("conditions:")
         return True
 
     # ---------------------------------------------------------------- scoring
@@ -129,8 +134,6 @@ class HazardService:
         cached = self.cache.get_object(cache_key)
         if cached is not None:
             return cached
-        from app.core.db import Database  # late import to avoid cycles
-
         max_age = self.settings.hazard_max_age_h
         active: list[tuple[Hazard, float, float]] = []
         session = self._db_session_factory()
@@ -174,7 +177,7 @@ def _point_line_distance_m(lon: float, lat: float, line) -> float:
     """
     import math as _math
 
-    from shapely.geometry import LineString, Point
+    from shapely.geometry import Point
     from shapely.ops import transform
 
     lat0 = line.bounds[1] + (line.bounds[3] - line.bounds[1]) / 2
